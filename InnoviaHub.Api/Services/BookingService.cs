@@ -1,13 +1,19 @@
 ﻿using InnoviaHub.Api.Mappings;
+using InnoviaHub.Api.Options;
 using InnoviaHub.Api.Services.Interfaces;
 using InnoviaHub.DataAccess.Entities;
 using InnoviaHub.DataAccess.Repositories.Interfaces;
 using InnoviaHub.Shared.DTOs.Booking;
+using Microsoft.Extensions.Options;
 
 namespace InnoviaHub.Api.Services;
 
-public class BookingService(IBookingRepository bookingRepository) : IBookingService
+public class BookingService(
+    IBookingRepository bookingRepository,
+    IOptions<OpeningHoursOptions> openingHours)
+    : IBookingService
 {
+    
     public async Task<IEnumerable<BookingDto>> GetAllAsync()
     {
         var bookings = await bookingRepository.GetAllAsync();
@@ -32,6 +38,8 @@ public class BookingService(IBookingRepository bookingRepository) : IBookingServ
     {
         if (dto.StartTime >= dto.EndTime)
             throw new InvalidOperationException("INVALID_BOOKING_TIME");
+        
+        EnsureWithinOpeningHours(dto.StartTime, dto.EndTime);
         
         var hasConflicts = await bookingRepository.HasConflictsAsync(
             dto.ResourceId,
@@ -67,6 +75,8 @@ public class BookingService(IBookingRepository bookingRepository) : IBookingServ
     {
         if (dto.StartTime >= dto.EndTime)
             throw new InvalidOperationException("INVALID_BOOKING_TIME");
+        
+        EnsureWithinOpeningHours(dto.StartTime, dto.EndTime);
         
         var booking = await bookingRepository.GetByIdAsync(id);
 
@@ -130,5 +140,23 @@ public class BookingService(IBookingRepository bookingRepository) : IBookingServ
         await bookingRepository.UpdateAsync(booking);
         
         return true;
+    }
+    
+    private void EnsureWithinOpeningHours(DateTime startUtc, DateTime endUtc)
+    {
+        var options = openingHours.Value;
+        var timeZone = TimeZoneInfo.FindSystemTimeZoneById(options.TimeZone);
+        
+        var localStart = TimeZoneInfo.ConvertTimeFromUtc(startUtc, timeZone);
+        var localEnd = TimeZoneInfo.ConvertTimeFromUtc(endUtc, timeZone);
+        
+        if (localStart.Date != localEnd.Date)
+            throw new InvalidOperationException("OUTSIDE_OPENING_HOURS");
+        
+        var startTime = TimeOnly.FromDateTime(localStart);
+        var endTime = TimeOnly.FromDateTime(localEnd);
+        
+        if (startTime < options.Open || endTime > options.Close)
+            throw new InvalidOperationException("OUTSIDE_OPENING_HOURS");
     }
 }

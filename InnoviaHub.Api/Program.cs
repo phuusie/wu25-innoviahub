@@ -5,8 +5,8 @@ using InnoviaHub.DataAccess;
 using InnoviaHub.DataAccess.Entities;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
 using InnoviaHub.Api.Hubs;
+using InnoviaHub.Api.Options;
 using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -34,6 +34,9 @@ builder.Services.AddDbContext<InnoviaHubDbContext>(options =>
 
 builder.Services.AddIdentity<User, IdentityRole<Guid>>()
     .AddEntityFrameworkStores<InnoviaHubDbContext>();
+
+builder.Services.Configure<OpeningHoursOptions>(
+    builder.Configuration.GetSection("OpeningHours"));
 
 builder.Services.AddAuthorization();
 
