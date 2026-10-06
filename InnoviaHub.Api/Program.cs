@@ -1,3 +1,5 @@
+using System.Security.Claims;
+using System.Threading.RateLimiting;
 using InnoviaHub.Api.Data;
 using InnoviaHub.Api.Extensions;
 using InnoviaHub.Api.Handler;
@@ -12,6 +14,9 @@ using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
+var connectionString = builder.Configuration["SQL_ConnectionString"] 
+    ?? throw new InvalidOperationException("SQL_CONNECTION_STRING IS MISSING");
+
 var frontendUrl = builder.Configuration["FRONTEND_URL"]
     ?? "http://localhost:5173";
 
@@ -22,6 +27,20 @@ var openAiModel = builder.Configuration["OpenAI:Model"]
     ?? throw new InvalidOperationException("OPENAI_MODEL IS MISSING");
 
 builder.Services.AddSingleton(new ChatClient(openAiModel, openAiKey));
+
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    options.AddPolicy("assistant", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "anonymous",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 10,
+                Window = TimeSpan.FromMinutes(1),
+            }));
+});
 
 builder.Services.AddCors(options =>
 {
@@ -34,9 +53,6 @@ builder.Services.AddCors(options =>
        .AllowCredentials();
    });
 });
-
-var connectionString = builder.Configuration["SQL_ConnectionString"]
-    ?? throw new InvalidOperationException("SQL_CONNECTION_STRING IS MISSING");
 
 builder.Services.AddDbContext<InnoviaHubDbContext>(options =>
     options.UseNpgsql(connectionString));
@@ -93,6 +109,8 @@ app.UseExceptionHandler();
 app.UseCors("Frontend");
 app.UseAuthentication();
 app.UseAuthorization();
+
+app.UseRateLimiter();
 
 app.MapControllers();
 app.MapHub<NotificationHub>("/hubs/notifications");// med detta får klienten anslutning till loclahosten
