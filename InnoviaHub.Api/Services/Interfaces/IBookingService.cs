@@ -11,4 +11,5 @@ public interface IBookingService
     Task<BookingDto?> UpdateAsync(Guid id, Guid userId, bool isAdmin, UpdateBookingDto dto);
     Task<bool> DeleteAsync(Guid id, Guid userId, bool isAdmin);
     Task<bool> CancelAsync(Guid id, Guid userId, bool isAdmin);
+    Task ValidateAsync(Guid resourceId, DateTime startUtc, DateTime endUtc, Guid? excludingBookingId = null);
 }

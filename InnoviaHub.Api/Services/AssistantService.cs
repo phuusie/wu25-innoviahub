@@ -149,6 +149,7 @@ public class AssistantService(
 
             var result = availability.Select(resource => new
             {
+                id = resource.ResourceId,
                 resurs = resource.ResourceName,
                 typ = resource.ResourceTypeName,
                 platser = resource.Capacity,
