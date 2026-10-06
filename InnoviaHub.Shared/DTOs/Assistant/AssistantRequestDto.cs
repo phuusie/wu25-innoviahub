@@ -2,5 +2,5 @@
 
 public class AssistantRequestDto
 {
-    public string Message { get; set; } = string.Empty;
+    public List<ChatMessageDto> Messages { get; set; } = [];
 }
