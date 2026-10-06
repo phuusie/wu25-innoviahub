@@ -5,14 +5,23 @@ using InnoviaHub.DataAccess;
 using InnoviaHub.DataAccess.Entities;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
 using InnoviaHub.Api.Hubs;
+using InnoviaHub.Api.Options;
+using OpenAI.Chat;
 using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
 var frontendUrl = builder.Configuration["FRONTEND_URL"]
     ?? "http://localhost:5173";
+
+var openAiKey = builder.Configuration["OPENAI_API_KEY"]
+    ?? throw new InvalidOperationException("OPENAI_API_KEY IS MISSING");
+
+var openAiModel = builder.Configuration["OpenAI:Model"]
+    ?? throw new InvalidOperationException("OPENAI_MODEL IS MISSING");
+
+builder.Services.AddSingleton(new ChatClient(openAiModel, openAiKey));
 
 builder.Services.AddCors(options =>
 {
@@ -34,6 +43,9 @@ builder.Services.AddDbContext<InnoviaHubDbContext>(options =>
 
 builder.Services.AddIdentity<User, IdentityRole<Guid>>()
     .AddEntityFrameworkStores<InnoviaHubDbContext>();
+
+builder.Services.Configure<OpeningHoursOptions>(
+    builder.Configuration.GetSection("OpeningHours"));
 
 builder.Services.AddAuthorization();
 

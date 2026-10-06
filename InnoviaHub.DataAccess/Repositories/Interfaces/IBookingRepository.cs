@@ -11,4 +11,5 @@ public interface IBookingRepository
     Task UpdateAsync(Booking booking);
     Task DeleteAsync(Booking booking);
     Task<bool> HasConflictsAsync(Guid resourceId, DateTime startTime, DateTime endTime, Guid? excludingBookingId = null);
+    Task<IEnumerable<Booking>> GetActiveInRangeAsync(DateTime fromUtc, DateTime toUtc);
 }
