@@ -1,6 +1,8 @@
-﻿namespace InnoviaHub.Api.Services.Interfaces;
+﻿using InnoviaHub.Shared.DTOs.Assistant;
+
+namespace InnoviaHub.Api.Services.Interfaces;
 
 public interface IAssistantService
 {
-    Task<string> AskAsync(string message);
+    Task<string> AskAsync(List<ChatMessageDto> conversation);
 }

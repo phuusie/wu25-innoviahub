@@ -22,6 +22,9 @@ public class AvailabilityService(
             date.ToDateTime(openingHours.Open), timeZone);
         var dayEndUtc = TimeZoneInfo.ConvertTimeToUtc(
             date.ToDateTime(openingHours.Close), timeZone);
+        
+        var nowUtc = DateTime.UtcNow;
+        var searchStartUtc = dayStartUtc > nowUtc ? dayStartUtc : nowUtc;
 
         var resources = (await resourceRepository.GetAllAsync())
             .Where(r => r.IsActive)
@@ -44,7 +47,7 @@ public class AvailabilityService(
                 ResourceName = resource.Name,
                 ResourceTypeName =  resource.ResourceType.Name,
                 Capacity = resource.Capacity,
-                FreeSlots = FindFreeSlots(resourceBookings, dayStartUtc, dayEndUtc),
+                FreeSlots = FindFreeSlots(resourceBookings, searchStartUtc, dayEndUtc),
             });
         }
         

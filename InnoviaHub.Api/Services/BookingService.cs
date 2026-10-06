@@ -144,6 +144,9 @@ public class BookingService(
     
     private void EnsureWithinOpeningHours(DateTime startUtc, DateTime endUtc)
     {
+        if (startUtc < DateTime.UtcNow)
+            throw new InvalidOperationException("BOOKING_IN_PAST");
+        
         var options = openingHours.Value;
         var timeZone = TimeZoneInfo.FindSystemTimeZoneById(options.TimeZone);
         

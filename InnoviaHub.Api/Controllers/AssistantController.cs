@@ -2,6 +2,7 @@
 using InnoviaHub.Shared.DTOs.Assistant;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace InnoviaHub.Api.Controllers;
 
@@ -11,12 +12,16 @@ namespace InnoviaHub.Api.Controllers;
 public class AssistantController(IAssistantService assistantService) : ControllerBase
 {
     [HttpPost("chat")]
+    [EnableRateLimiting("assistant")]
     public async Task<ActionResult<AssistantResponseDto>> Chat([FromBody] AssistantRequestDto dto)
     {
-        if (string.IsNullOrWhiteSpace(dto.Message))
+        if (dto.Messages.Count == 0 || !dto.Messages[^1].Role.Equals("user", StringComparison.OrdinalIgnoreCase))
             return BadRequest();
         
-        var reply = await assistantService.AskAsync(dto.Message);
+        if (dto.Messages.Count > 30 || dto.Messages.Any(m => m.Content.Length > 1000))
+            return BadRequest();
+        
+        var reply = await assistantService.AskAsync(dto.Messages);
         
         return Ok(new AssistantResponseDto { Reply = reply });
     }
