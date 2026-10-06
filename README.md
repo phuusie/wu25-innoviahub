@@ -19,8 +19,8 @@ Ersätt `<container_name>`, `<database_name>`, `<username>` och `<password>` med
 ```env
 CONTAINER_NAME=<container_name>
 DATABASE=<database_name>
-USERNAME=<username>
-PASSWORD=<password>
+DB_USERNAME=<username>
+DB_PASSWORD=<password>
 ```
 
 ```powershell
