@@ -10,6 +10,7 @@ namespace InnoviaHub.Api.Services;
 
 public class BookingService(
     IBookingRepository bookingRepository,
+    IResourceRepository resourceRepository,
     IOptions<OpeningHoursOptions> openingHours)
     : IBookingService
 {
@@ -36,20 +37,8 @@ public class BookingService(
 
     public async Task<BookingDto> CreateAsync(Guid userId, CreateBookingDto dto)
     {
-        if (dto.StartTime >= dto.EndTime)
-            throw new InvalidOperationException("INVALID_BOOKING_TIME");
+        await ValidateAsync(dto.ResourceId, dto.StartTime, dto.EndTime);
         
-        EnsureWithinOpeningHours(dto.StartTime, dto.EndTime);
-        
-        var hasConflicts = await bookingRepository.HasConflictsAsync(
-            dto.ResourceId,
-            dto.StartTime,
-            dto.EndTime
-        );
-        
-        if (hasConflicts)
-            throw new InvalidOperationException("RESOURCE_ALREADY_BOOKED");
-
         var booking = new Booking
         {
             Id = Guid.NewGuid(),
@@ -73,11 +62,6 @@ public class BookingService(
 
     public async Task<BookingDto?> UpdateAsync(Guid id, Guid userId, bool isAdmin, UpdateBookingDto dto)
     {
-        if (dto.StartTime >= dto.EndTime)
-            throw new InvalidOperationException("INVALID_BOOKING_TIME");
-        
-        EnsureWithinOpeningHours(dto.StartTime, dto.EndTime);
-        
         var booking = await bookingRepository.GetByIdAsync(id);
 
         if (booking is null)
@@ -86,15 +70,7 @@ public class BookingService(
         if (booking.UserId != userId && !isAdmin)
             throw new UnauthorizedAccessException();
         
-        var hasConflicts = await bookingRepository.HasConflictsAsync(
-            dto.ResourceId,
-            dto.StartTime,
-            dto.EndTime,
-            id
-        );
-        
-        if (hasConflicts)
-            throw new InvalidOperationException("RESOURCE_ALREADY_BOOKED");
+        await ValidateAsync(dto.ResourceId, dto.StartTime, dto.EndTime, id);
 
         booking.ResourceId = dto.ResourceId;
         booking.StartTime = dto.StartTime;
@@ -141,7 +117,26 @@ public class BookingService(
         
         return true;
     }
-    
+
+    public async Task ValidateAsync(Guid resourceId, DateTime startUtc, DateTime endUtc, Guid? excludingBookingId = null)
+    {
+        if (startUtc >= endUtc)
+            throw new InvalidOperationException("INVALID_BOOKING_TIME");
+        
+        EnsureWithinOpeningHours(startUtc, endUtc);
+        
+        var resource = await resourceRepository.GetByIdAsync(resourceId);
+        
+        if (resource is null || !resource.IsActive)
+            throw new KeyNotFoundException("RESOURCE_NOT_FOUND");
+
+        var hasConflicts = await bookingRepository.HasConflictsAsync(
+            resourceId, startUtc, endUtc, excludingBookingId);
+        
+        if (hasConflicts)
+            throw new InvalidOperationException("RESOURCE_ALREADY_BOOKED");
+    }
+
     private void EnsureWithinOpeningHours(DateTime startUtc, DateTime endUtc)
     {
         if (startUtc < DateTime.UtcNow)
