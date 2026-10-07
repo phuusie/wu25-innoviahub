@@ -155,7 +155,9 @@ public class AssistantService(
     {
         if (!cache.TryGetValue(ProposalKey(proposalId), out BookingProposal? proposal) ||
             proposal is null ||
-            proposal.UserId != userId)
+            proposal.UserId != userId ||
+            !cache.TryGetValue(LatestProposalKey(userId), out Guid latestId) ||
+            latestId != proposalId)
             throw new KeyNotFoundException("PROPOSAL_NOT_FOUND");
 
         var booking = await bookingService.CreateAsync(userId, new CreateBookingDto
@@ -166,6 +168,7 @@ public class AssistantService(
         });
         
         cache.Remove(ProposalKey(proposalId));
+        cache.Remove(LatestProposalKey(userId));
         
         return booking;
     }
@@ -250,6 +253,7 @@ public class AssistantService(
             Guid.NewGuid(), userId, resourceId, resource!.Name, startUtc, endUtc);
         
         cache.Set(ProposalKey(_proposal.Id), _proposal, ProposalLifetime);
+        cache.Set(LatestProposalKey(userId), _proposal.Id, ProposalLifetime);
         
         return """{ "ok": true, "meddelande": "Förslaget visas för kunden med knappen 'Ja, boka'. Bokningen är INTE gjord än." }""";
     }
@@ -260,4 +264,5 @@ public class AssistantService(
             : null;
 
     private static string ProposalKey(Guid proposalId) => $"booking-proposal:{proposalId}";
+    private static string LatestProposalKey(Guid userId) => $"latest-proposal:{userId}";
 }
