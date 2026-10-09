@@ -22,8 +22,8 @@ public class AvailabilityService(
             date.ToDateTime(openingHours.Open), timeZone);
         var dayEndUtc = TimeZoneInfo.ConvertTimeToUtc(
             date.ToDateTime(openingHours.Close), timeZone);
-        
-        var nowUtc = DateTime.UtcNow;
+
+        var nowUtc = RoundUpToQuarter(DateTime.UtcNow);
         var searchStartUtc = dayStartUtc > nowUtc ? dayStartUtc : nowUtc;
 
         var resources = (await resourceRepository.GetAllAsync())
@@ -73,5 +73,13 @@ public class AvailabilityService(
             freeSlots.Add(new TimeSlotDto { StartTime = cursor, EndTime = dayEndUtc });
         
         return freeSlots;
+    }
+
+    private static DateTime RoundUpToQuarter(DateTime time)
+    {
+        var quarter = TimeSpan.FromMinutes(15).Ticks;
+        var rounded = (time.Ticks + quater - 1) / quater * quater;
+        
+        return new DateTime(rounded, time.Kind);
     }
 }
