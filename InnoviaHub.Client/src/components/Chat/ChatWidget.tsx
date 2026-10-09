@@ -22,8 +22,7 @@ const ERROR_MESSAGES: Record<string, string> = {
 
 const EXAMPLE_QUESTIONS = [
     "Ledigt just nu?",
-    "Rum för 4 personer imorgon?",
-    "Skrivbord i veckan?"
+    "Ledigt imorgon?"
 ];
 
 export default function ChatWidget() {
@@ -144,7 +143,7 @@ export default function ChatWidget() {
     }
 
     return (
-        <div className="fixed bottom-24 right-6 z-50 flex h-[520px] w-[360px] max-w-[calc(100vw-3rem)] flex-col overflow-hidden rounded-xl border border-border bg-surface shadow-2xl">
+        <div className="fixed bottom-24 right-6 z-50 flex h-180 w-110 max-w-[calc(100vw-3rem)] flex-col overflow-hidden rounded-xl border border-border bg-surface shadow-2xl">
             <div className="flex items-center justify-between border-b border-border px-4 py-3">
                 <div className="flex items-center gap-2">
                     <span className="pulse-dot inline-block h-2 w-2 rounded-full bg-teal" />
