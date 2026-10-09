@@ -5,6 +5,7 @@ import { getAllUsers } from "../services/userService";
 import { getAllBookings, type Booking } from "../services/bookingApiService";
 import { getAllResources, type Resource } from "../services/resourceService";
 import { connection, startNotificationConnection } from "../services/notificationService";
+import ChatWidget from "../components/Chat/ChatWidget.tsx";
 
 export function LiveDot({ color = "#00d4aa" }: { color?: string }) {
   return (
@@ -339,6 +340,7 @@ export default function LandingPage({ onBook, user }: { onBook: () => void; user
           </span>
         </div>
       </footer>
+      <ChatWidget />
     </div>
   );
 }

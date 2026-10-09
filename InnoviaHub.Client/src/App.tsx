@@ -16,7 +16,7 @@ export default function App() {
     getCurrentUser()
       .then((currentUser) => {
         setUser(currentUser);
-        setView(currentUser ? currentUser.isAdmin ? "admin" : "booking" : "login");
+        setView(currentUser ? currentUser.isAdmin ? "admin" : "landing" : "login");
       })
       .catch(() => {
         setUser(null);
@@ -36,7 +36,7 @@ export default function App() {
 
   function handleNavigate(nextView: View) {
     if (nextView === "admin" && !user?.isAdmin) {
-      setView("booking");
+      setView("landing");
       return;
     }
 
@@ -68,7 +68,7 @@ export default function App() {
               <LoginPage
                 onLogin={(loggedInUser) => {
                   setUser(loggedInUser);
-                  setView(loggedInUser.isAdmin ? "admin" : "booking");
+                  setView(loggedInUser.isAdmin ? "admin" : "landing");
                 }}
               />
             )}
