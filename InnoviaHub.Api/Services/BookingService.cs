@@ -143,10 +143,9 @@ public class BookingService(
             throw new InvalidOperationException("BOOKING_IN_PAST");
         
         var options = openingHours.Value;
-        var timeZone = TimeZoneInfo.FindSystemTimeZoneById(options.TimeZone);
         
-        var localStart = TimeZoneInfo.ConvertTimeFromUtc(startUtc, timeZone);
-        var localEnd = TimeZoneInfo.ConvertTimeFromUtc(endUtc, timeZone);
+        var localStart = options.ToLocal(startUtc);
+        var localEnd = options.ToLocal(endUtc);
         
         if (localStart.Date != localEnd.Date)
             throw new InvalidOperationException("OUTSIDE_OPENING_HOURS");

@@ -10,18 +10,15 @@ namespace InnoviaHub.Api.Services;
 public class AvailabilityService(
     IResourceRepository resourceRepository,
     IBookingRepository bookingRepository, 
-    IOptions<OpeningHoursOptions> options)
+    IOptions<OpeningHoursOptions> openingHours)
     : IAvailabilityService
 {
     public async Task<IEnumerable<ResourceAvailabilityDto>> GetAvailabilityAsync(Guid? resourceTypeId, DateOnly date, int? minCapacity)
     {
-        var openingHours = options.Value;
-        var timeZone = TimeZoneInfo.FindSystemTimeZoneById(openingHours.TimeZone);
+        var options = openingHours.Value;
         
-        var dayStartUtc = TimeZoneInfo.ConvertTimeToUtc(
-            date.ToDateTime(openingHours.Open), timeZone);
-        var dayEndUtc = TimeZoneInfo.ConvertTimeToUtc(
-            date.ToDateTime(openingHours.Close), timeZone);
+        var dayStartUtc = options.ToUtc(date, options.Open);
+        var dayEndUtc = options.ToUtc(date, options.Close);
 
         var nowUtc = RoundUpToQuarter(DateTime.UtcNow);
         var searchStartUtc = dayStartUtc > nowUtc ? dayStartUtc : nowUtc;

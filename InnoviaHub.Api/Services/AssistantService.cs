@@ -155,7 +155,7 @@ public class AssistantService(
                 : null;
         
         var availability = await availabilityService.GetAvailabilityAsync(null, date, minCapacity);
-        var timeZone = TimeZoneInfo.FindSystemTimeZoneById(openingHours.Value.TimeZone);
+        var options = openingHours.Value;
 
         var result = availability.Select(resource => new
         {
@@ -164,8 +164,7 @@ public class AssistantService(
             typ = resource.ResourceTypeName,
             platser = resource.Capacity,
             ledigt = resource.FreeSlots.Select(slot =>
-                $"{TimeZoneInfo.ConvertTimeFromUtc(slot.StartTime, timeZone):HH:mm}-" +
-                $"{TimeZoneInfo.ConvertTimeFromUtc(slot.EndTime, timeZone):HH:mm}")
+                $"{options.ToLocal(slot.StartTime):HH:mm}-{options.ToLocal(slot.EndTime):HH:mm}")
         });
             
         return JsonSerializer.Serialize(result);
@@ -179,9 +178,9 @@ public class AssistantService(
             !TimeOnly.TryParseExact(GetString(root, "endTime"), "HH:mm", out var endTime))
             return """{ "error": "Ogiltiga värden. Använd id från get_availability, YYYY-MM-DD och HH:mm" }""";
         
-        var timeZone = TimeZoneInfo.FindSystemTimeZoneById(openingHours.Value.TimeZone);
-        var startUtc = TimeZoneInfo.ConvertTimeToUtc(date.ToDateTime(startTime), timeZone);
-        var endUtc = TimeZoneInfo.ConvertTimeToUtc(date.ToDateTime(endTime), timeZone);
+        var options = openingHours.Value;
+        var startUtc = options.ToUtc(date, startTime);
+        var endUtc = options.ToUtc(date, endTime);
 
         try
         {
