@@ -1,10 +1,10 @@
-﻿using System.Globalization;
-using InnoviaHub.Api.Options;
+﻿using InnoviaHub.Api.Options;
 using InnoviaHub.Api.Services.Interfaces;
 using InnoviaHub.Shared.DTOs.Assistant;
 using Microsoft.Extensions.Options;
 using OpenAI.Chat;
 using System.Text.Json;
+using InnoviaHub.Api.Assistant;
 using InnoviaHub.Api.Models;
 using InnoviaHub.DataAccess.Repositories.Interfaces;
 using InnoviaHub.Shared.DTOs.Booking;
@@ -19,96 +19,23 @@ public class AssistantService(
     ILogger<AssistantService> logger,
     IBookingService bookingService,
     IResourceRepository resourceRepository,
-    IMemoryCache cache) : IAssistantService
+    IMemoryCache cache,
+    AssistantPrompt prompt) : IAssistantService
 {
     private const int MaxToolRounds = 5;
     private static readonly TimeSpan ProposalLifetime = TimeSpan.FromMinutes(10);
     private BookingProposal? _proposal;
+    private static string ProposalKey(Guid proposalId) => $"booking-proposal:{proposalId}";
+    private static string LatestProposalKey(Guid userId) => $"latest-proposal:{userId}";
     
-    private static readonly ChatTool GetAvailabilityTool = ChatTool.CreateFunctionTool(
-        functionName: "get_availability",
-        functionDescription:
-            "Hämtar lediga tider för alla aktiva resurser en viss dag. " +
-            "Returnerar resursens id, namn, typ, antal platser och lediga intervall i svensk tid.",
-        functionParameters: BinaryData.FromString("""
-              {
-                "type": "object",
-                "properties": {
-                  "date":        { "type": "string",  "description": "Datum i formatet YYYY-MM-DD" },
-                  "minCapacity": { "type": "integer", "description": "Minsta antal platser resursen måste ha" }
-                },
-                "required": ["date"]
-              }
-            """));
-
-    private static readonly ChatTool ProposeBookingTool = ChatTool.CreateFunctionTool(
-        functionName: "propose_booking",
-        functionDescription:
-            "Skapar ett bokningsförslag som kunden sedan bekräftar med en knapp. " +
-            "Använd när kunden har valt resurs, datum, starttid och sluttid. " +
-            "Bokar INTE direkt. Returnerar ett fel om tiden inte går att boka.",
-        functionParameters: BinaryData.FromString("""
-                  {
-                    "type": "object",
-                    "properties": {
-                      "resourceId": { "type": "string", "description": "Resursens id från get_availability" },
-                      "date":       { "type": "string", "description": "Datum i formatet YYYY-MM-DD" },
-                      "startTime":  { "type": "string", "description": "Starttid i svensk tid, formatet HH:mm" },
-                      "endTime":    { "type": "string", "description": "Sluttid i svensk tid, formatet HH:mm" }
-                    },
-                    "required": ["resourceId", "date", "startTime", "endTime"]
-                  }
-              """));
-    
-    private string BuildSystemPrompt()
-    {
-        var options = openingHours.Value;
-        var timeZone = TimeZoneInfo.FindSystemTimeZoneById(options.TimeZone);
-        var now = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, timeZone);
-        var swedish = new CultureInfo("sv-SE");
-        var tomorrow = now.AddDays(1);
-        var isOpenNow = options.IsOpenAt(TimeOnly.FromDateTime(now));
-        
-        var openStatus = isOpenNow
-            ? $"Just nu är det ÖPPET (stänger {options.Close:HH:mm})."
-            : $"Just nu är det STÄNGT (öppnar {options.Open:HH:mm}).";
-        
-        return $$"""
-                 Du är bokningsassistent för Innovia Hub. Svara kort och vänligt på svenska.
-                 Du hjälper kunder att hitta lediga tider och boka lokaler. Du svarar också
-                 gärna på frågor om datum, veckodagar, tider och öppettider.
-
-                 Fakta:
-                 - Idag är det {{now.ToString("dddd d MMMM yyyy", swedish)}}, klockan är {{now:HH:mm}} (svensk tid).
-                 - Imorgon är det {{tomorrow.ToString("dddd d MMMM yyyy", swedish)}}.
-                 - Öppettider: {{options.Open:HH:mm}}–{{options.Close:HH:mm}} alla dagar.
-                 - {openStatus}
-
-                 Regler:
-                 - För att söka lediga tider räcker datum och antal personer. Fråga inte efter
-                     starttid eller längd innan du har visat vad som är ledigt.
-                 - Saknas datum eller antal personer, fråga efter det, en sak i taget.
-                 - Först när kunden vill boka en viss tid behöver du starttid och längd.
-                     Fråga bara efter det som kunden inte redan har sagt.
-                 - Hitta aldrig på lediga tider, rum eller bokningar. Vet du inte, säg det.
-                 - Alla tider du nämner ska vara i svensk tid.
-                 - Om någon frågar om något helt annat, t.ex. väder, recept eller allmänbildning,
-                     avböj vänligt och erbjud hjälp med bokning.
-                 - Varje gång kunden frågar vad som är ledigt, även "just nu" eller "idag", MÅSTE du
-                     anropa get_availability innan du svarar. Avgör aldrig själv vad som är ledigt.
-                 - Om get_availability inte hittar något ledigt idag, föreslå imorgon.
-                 - När kunden vill boka och resurs, datum, starttid och sluttid är kända:
-                     anropa propose_booking DIREKT. Fråga inte "vill du bekräfta?" i text,
-                     bekräftelsen sker med knappen "Ja, boka" som visas automatiskt.
-                 - Om propose_booking ger ett fel, anropa get_availability igen för samma dag och
-                     föreslå den närmaste lediga tiden. Föreslå en annan dag bara om inget är ledigt.
-                 - Säg aldrig att en bokning är gjord. Säg att kunden bekräftar med knappen "Ja, boka".
-                 """;
-    }
+    private static string? GetString(JsonElement root, string name) =>
+        root.TryGetProperty(name, out var element) && element.ValueKind == JsonValueKind.String
+            ? element.GetString()
+            : null;
     
     public async Task<AssistantResponseDto> AskAsync(Guid userId, List<ChatMessageDto> conversation)
     {
-        List<ChatMessage> messages = [new SystemChatMessage(BuildSystemPrompt())];
+        List<ChatMessage> messages = [new SystemChatMessage(prompt.Build())];
         
         foreach (var message in conversation)
         {
@@ -118,7 +45,11 @@ public class AssistantService(
                 messages.Add(new AssistantChatMessage(message.Content));
         }
 
-        var chatOptions = new ChatCompletionOptions { Tools = { GetAvailabilityTool, ProposeBookingTool } };
+        var chatOptions = new ChatCompletionOptions { Tools =
+        {
+            AssistantTools.GetAvailabilityTool, 
+            AssistantTools.ProposeBookingTool
+        } };
 
         try
         {
@@ -189,7 +120,7 @@ public class AssistantService(
 
     private async Task<string> RunToolAsync(ChatToolCall toolCall, Guid userId)
     {
-       JsonDocument arguments;
+        JsonDocument arguments;
         
         try
         {
@@ -204,8 +135,8 @@ public class AssistantService(
         {
             return toolCall.FunctionName switch
             {
-                "get_availability" => await RunAvailabilityAsync(arguments.RootElement),
-                "propose_booking" => await RunProposeBookingAsync(arguments.RootElement, userId),
+                AssistantTools.GetAvailability => await RunAvailabilityAsync(arguments.RootElement),
+                AssistantTools.ProposeBooking => await RunProposeBookingAsync(arguments.RootElement, userId),
                 _ => """{ "error": "Okänt verktyg" }"""
             };
         }
@@ -271,12 +202,4 @@ public class AssistantService(
         
         return """{ "ok": true, "meddelande": "Förslaget visas för kunden med knappen 'Ja, boka'. Bokningen är INTE gjord än." }""";
     }
-    
-    private static string? GetString(JsonElement root, string name) =>
-        root.TryGetProperty(name, out var element) && element.ValueKind == JsonValueKind.String
-            ? element.GetString()
-            : null;
-
-    private static string ProposalKey(Guid proposalId) => $"booking-proposal:{proposalId}";
-    private static string LatestProposalKey(Guid userId) => $"latest-proposal:{userId}";
 }

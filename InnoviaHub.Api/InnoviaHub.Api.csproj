@@ -21,6 +21,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Update="Assistant\Prompts\*.md" CopyToOutputDirectory="PreserveNewest" />
     <ProjectReference Include="..\InnoviaHub.DataAccess\InnoviaHub.DataAccess.csproj" />
   </ItemGroup>
 

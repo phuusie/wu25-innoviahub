@@ -1,4 +1,5 @@
-﻿using InnoviaHub.Api.Services;
+﻿using InnoviaHub.Api.Assistant;
+using InnoviaHub.Api.Services;
 using InnoviaHub.Api.Services.Interfaces;
 
 namespace InnoviaHub.Api.Extensions;
@@ -14,6 +15,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IBookingService, BookingService>();
         services.AddScoped<IAvailabilityService, AvailabilityService>();
         services.AddScoped<IAssistantService, AssistantService>();
+        
+        services.AddSingleton<AssistantPrompt>();
         
         return services;
     }
