@@ -24,8 +24,7 @@ public class AssistantPrompt(IOptions<OpeningHoursOptions> openingHours)
     private string BuildFacts()
     {
         var options = openingHours.Value;
-        var timeZone = TimeZoneInfo.FindSystemTimeZoneById(options.TimeZone);
-        var now = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, timeZone);
+        var now = options.LocalNow();
         var tomorrow = now.AddDays(1);
 
         return $"""
