@@ -78,7 +78,7 @@ public class AvailabilityService(
     private static DateTime RoundUpToQuarter(DateTime time)
     {
         var quarter = TimeSpan.FromMinutes(15).Ticks;
-        var rounded = (time.Ticks + quater - 1) / quater * quater;
+        var rounded = (time.Ticks + quarter - 1) / quarter * quarter;
         
         return new DateTime(rounded, time.Kind);
     }
