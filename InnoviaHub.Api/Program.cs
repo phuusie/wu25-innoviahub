@@ -63,6 +63,9 @@ builder.Services.AddIdentity<User, IdentityRole<Guid>>()
 builder.Services.Configure<OpeningHoursOptions>(
     builder.Configuration.GetSection("OpeningHours"));
 
+builder.Services.Configure<IotOptions>(
+    builder.Configuration.GetSection("Iot"));
+
 builder.Services.AddAuthorization();
 
 builder.Services.AddApplicationServices();

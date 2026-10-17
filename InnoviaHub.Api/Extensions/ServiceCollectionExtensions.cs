@@ -17,6 +17,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IAssistantService, AssistantService>();
         
         services.AddSingleton<AssistantPrompt>();
+
+        services.AddHttpClient<IIotService, IotService>();
         
         return services;
     }
