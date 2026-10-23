@@ -49,9 +49,9 @@ export const sensors: Sensor[] = [
   },
 ];
 
-export const adminTabs: { id: AdminTab; label: string; icon: string }[] = [
-  { id: "dashboard", label: "Översikt", icon: "◈" },
-  { id: "sensors", label: "Sensorer", icon: "⚙" },
-  { id: "resources", label: "Resurser", icon: "▪" },
-  { id: "members", label: "Medlemmar", icon: "◯" },
+export const adminTabs: { id: AdminTab; label: string }[] = [
+  {id: "dashboard", label: "Översikt"},
+  {id: "sensors", label: "Sensorer"},
+  {id: "resources", label: "Resurser"},
+  {id: "members", label: "Medlemmar"},
 ];

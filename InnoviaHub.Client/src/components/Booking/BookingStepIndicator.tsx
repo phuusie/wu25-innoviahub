@@ -1,4 +1,4 @@
-﻿import type { Step } from "../../types/bookingTypes.ts";
+﻿import type {Step} from "../../types/bookingTypes.ts";
 
 type StepProps = {
   step: Step;
@@ -7,62 +7,42 @@ type StepProps = {
 const steps: Step[] = ["select", "configure", "overview", "confirmation"];
 const labels: Record<Step, string> = {
   select: "Resurs",
-  configure: "Konfigurera",
+  configure: "Tid",
   overview: "Översikt",
   confirmation: "Klart",
 };
 
-export default function BookingStepIndicator({ step }: StepProps) {
+export default function BookingStepIndicator({step}: StepProps) {
   const stepIndex = steps.indexOf(step);
 
   return (
-    <div className="flex items-center gap-3 mb-8">
+    <ol aria-label="Bokningssteg" className="mb-8 flex items-center gap-3">
       {steps.map((s, i) => {
         const isActive = s === step;
         const isDone = i < stepIndex;
 
         return (
-          <div key={s} className="flex items-center gap-2">
-            <div
-              className="flex items-center gap-2"
-              style={{ opacity: isDone || isActive ? 1 : 0.4 }}
-            >
-              <div
-                className="rounded-full flex items-center justify-center text-xs font-bold mono"
-                style={{
-                  width: 24,
-                  height: 24,
-                  background:
-                    isDone || isActive ? "#00d4aa" : "#1e3347",
-                  color:
-                    isDone || isActive ? "#080e14" : "#7a94aa",
-                }}
+          <li key={s} aria-current={isActive ? "step" : undefined} className="flex items-center gap-3">
+            <div className={`flex items-center gap-2 ${isDone || isActive ? "" : "opacity-50"}`}>
+              <span
+                className={[
+                  "mono flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold",
+                  isDone || isActive ? "bg-teal text-bg" : "bg-panel text-muted",
+                ].join(" ")}
               >
                 {isDone ? "✓" : i + 1}
-              </div>
-
-              <span
-                className="hidden sm:block text-sm"
-                style={{
-                  color: isActive ? "#e2eaf2" : "#7a94aa",
-                  fontFamily: "Outfit, sans-serif",
-                }}
-              >
+              </span>
+              <span className={`hidden font-display text-sm sm:block ${isActive ? "text-text" : "text-muted"}`}>
                 {labels[s]}
               </span>
             </div>
 
             {i < steps.length - 1 && (
-              <div
-                className="w-8 h-px"
-                style={{
-                  background: i < stepIndex ? "#00d4aa" : "#1e3347",
-                }}
-              />
+              <span aria-hidden="true" className={`h-px w-8 ${i < stepIndex ? "bg-teal" : "bg-border"}`}/>
             )}
-          </div>
+          </li>
         );
       })}
-    </div>
+    </ol>
   );
 }

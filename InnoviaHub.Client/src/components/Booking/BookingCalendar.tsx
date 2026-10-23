@@ -15,10 +15,9 @@ function formatDate(year: number, month: number, day: number) {
 }
 
 export default function BookingCalendar({
-    selectedDate,
-    onSelectDate,
-  }: BookingCalendarProps)
-{
+                                          selectedDate,
+                                          onSelectDate,
+                                        }: BookingCalendarProps) {
   const selected = new Date(`${selectedDate}T00:00:00`);
 
   const [visibleMonth, setVisibleMonth] = useState(
@@ -62,17 +61,19 @@ export default function BookingCalendar({
         <button
           type="button"
           onClick={previousMonth}
-          className="w-8 h-8 rounded-lg flex items-center justify-center transition-all"
+          aria-label="Föregående månad"
+          className="w-11 h-11 rounded-lg flex items-center justify-center transition-all"
           style={{
             background: "#111e2d",
-            border: "1px solid #1e3347",
+            border: "1px solid #527494",
             color: "#7a94aa",
           }}
         >
-          ←
+          <span aria-hidden="true">←</span>
         </button>
 
         <div
+          aria-live="polite"
           className="text-sm font-semibold capitalize"
           style={{
             color: "#e2eaf2",
@@ -85,18 +86,19 @@ export default function BookingCalendar({
         <button
           type="button"
           onClick={nextMonth}
-          className="w-8 h-8 rounded-lg flex items-center justify-center transition-all"
+          aria-label="Nästa månad"
+          className="w-11 h-11 rounded-lg flex items-center justify-center transition-all"
           style={{
             background: "#111e2d",
-            border: "1px solid #1e3347",
+            border: "1px solid #527494",
             color: "#7a94aa",
           }}
         >
-          →
+          <span aria-hidden="true">→</span>
         </button>
       </div>
 
-      <div className="grid grid-cols-7 gap-1 mb-2">
+      <div aria-hidden="true" className="grid grid-cols-7 gap-1 mb-2">
         {weekDays.map((day) => (
           <div
             key={day}
@@ -119,14 +121,22 @@ export default function BookingCalendar({
 
           const currentDate = new Date(year, month, day);
           const isPastDate = currentDate < today;
+          const dayLabel = currentDate.toLocaleDateString("sv-SE", {
+            weekday: "long",
+            day: "numeric",
+            month: "long",
+            year: "numeric",
+          });
 
           return (
             <button
               key={dateValue}
               type="button"
               disabled={isPastDate}
+              aria-label={dayLabel}
+              aria-pressed={isSelected}
               onClick={() => onSelectDate(dateValue)}
-              className="aspect-square rounded-lg text-xs font-medium transition-all"
+              className="aspect-square min-h-11 rounded-lg text-xs font-medium transition-all"
               style={{
                 background: isSelected
                   ? "#00d4aa"

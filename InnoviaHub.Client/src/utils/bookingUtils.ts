@@ -1,72 +1,103 @@
-﻿import type { Booking } from "../services/bookingApiService";
+﻿import type {Booking} from "../services/bookingApiService";
+
+// Samma öppettider som backend (OpeningHours i appsettings.json)
+export const OPENING_MINUTES = 8 * 60;
+export const CLOSING_MINUTES = 18 * 60;
+export const STEP_MINUTES = 15;
+const DEFAULT_LENGTH_MINUTES = 60;
+
+export function toMinutes(time: string): number {
+  const [hours, minutes] = time.split(":").map(Number);
+  return hours * 60 + minutes;
+}
+
+export function minutesToTime(totalMinutes: number): string {
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+}
+
+export function toDateTime(date: string, time: string): Date {
+  return new Date(`${date}T${time}:00`);
+}
 
 export function generateTimeSlots(
-    start: number,
-    end: number,
-    intervalMinutes: number,
+  start: number,
+  end: number,
+  intervalMinutes: number,
 ): string[] {
-    const slots: string[] = [];
+  const slots: string[] = [];
 
-    for (let i = start; i <= end; i += intervalMinutes) {
-        const hours = Math.floor(i / 60);
-        const minutes = i % 60;
+  for (let i = start; i <= end; i += intervalMinutes) {
+    slots.push(minutesToTime(i));
+  }
 
-        slots.push(
-            `${hours.toString().padStart(2, "0")}:${minutes
-                .toString()
-                .padStart(2, "0")}`
-        );
-    }
-
-    return slots;
+  return slots;
 }
 
 export function isPastTime(date: string, time: string) {
-    const selectedDateTime = new Date(`${date}T${time}:00`);
-    return selectedDateTime < new Date();
+  return toDateTime(date, time) < new Date();
+}
+
+// Starttider som inte har passerat
+export function availableStartTimes(slots: string[], date: string): string[] {
+  return slots.filter((time) => !isPastTime(date, time));
+}
+
+// Föreslagen sluttid: en timme efter starten, men aldrig efter stängning
+export function defaultEndTime(startTime: string): string {
+  return minutesToTime(Math.min(toMinutes(startTime) + DEFAULT_LENGTH_MINUTES, CLOSING_MINUTES));
+}
+
+// "1 h 30 min", "45 min", "2 h"
+export function formatDuration(startTime: string, endTime: string): string {
+  const total = toMinutes(endTime) - toMinutes(startTime);
+  const hours = Math.floor(total / 60);
+  const minutes = total % 60;
+
+  if (hours === 0) return `${minutes} min`;
+  if (minutes === 0) return `${hours} h`;
+  return `${hours} h ${minutes} min`;
+}
+
+// Datum som "YYYY-MM-DD" i lokal tid
+export function toDateString(date: Date): string {
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${date.getFullYear()}-${month}-${day}`;
+}
+
+export function addDays(date: string, days: number): string {
+  const result = new Date(`${date}T00:00:00`);
+  result.setDate(result.getDate() + days);
+  return toDateString(result);
+}
+
+export function formatTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString("sv-SE", {hour: "2-digit", minute: "2-digit"});
+}
+
+export function formatLongDate(date: string): string {
+  return new Date(`${date}T00:00:00`).toLocaleDateString("sv-SE", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  });
 }
 
 export function bookingOverlapsSelection(
-    booking: Booking,
-    resourceId: string,
-    date: string,
-    timeSlot: string,
-    duration: string,
+  booking: Booking,
+  resourceId: string,
+  date: string,
+  startTime: string,
+  endTime: string,
 ) {
-    if (booking.resource.id !== resourceId || booking.isCancelled) {
-        return false;
-    }
+  if (booking.resource.id !== resourceId || booking.isCancelled) {
+    return false;
+  }
 
-    const startTime = new Date(`${date}T${timeSlot}:00`);
-
-    const durationHours =
-        duration === "Heldag"
-            ? 8
-            : Number.parseInt(duration, 10);
-
-    const endTime = new Date(startTime);
-    endTime.setHours(endTime.getHours() + durationHours);
-
-    return (
-        new Date(booking.startTime) < endTime &&
-        new Date(booking.endTime) > startTime
-    );
+  return (
+    new Date(booking.startTime) < toDateTime(date, endTime) &&
+    new Date(booking.endTime) > toDateTime(date, startTime)
+  );
 }
-
-export function getBookingEndTime(
-    startTime: Date,
-    duration: string,
-) {
-    const endTime = new Date(startTime);
-
-    if (duration === "Heldag") {
-        endTime.setHours(18, 0, 0, 0);
-    } else {
-        endTime.setHours(
-            endTime.getHours() + Number.parseInt(duration, 10)
-        );
-    }
-
-    return endTime;
-}
-

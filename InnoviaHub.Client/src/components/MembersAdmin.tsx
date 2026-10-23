@@ -1,6 +1,11 @@
-import { useEffect, useState } from "react";
+import {useEffect, useState} from "react";
 import Alert from "./Alert";
-import AdminStatusBadge from "./AdminStatusBadge";
+import AdminDialog from "./Admin/AdminDialog";
+import {
+  dangerIconButtonClass, inputClass, labelClass,
+  primaryButtonClass, secondaryButtonClass, segmentClass,
+} from "./Admin/adminStyles";
+import {IconPlus, IconSearch, IconTrash} from "./Icons";
 import {
   createUser,
   deleteUser,
@@ -13,181 +18,115 @@ type MemberForm = {
   lastname: string;
   email: string;
   password: string;
-  isAdmin: boolean;
 };
 const emptyForm: MemberForm = {
   firstname: "",
   lastname: "",
   email: "",
   password: "",
-  isAdmin: false,
-};
-const fieldStyle = {
-  width: "100%",
-  boxSizing: "border-box" as const,
-  background: "#111e2d",
-  border: "1px solid #1e3347",
-  borderRadius: 10,
-  padding: "10px 12px",
-  color: "#e2eaf2",
-  fontSize: 14,
 };
 
+type RoleFilter = "all" | "admin" | "member";
+
+const roleFilters: { id: RoleFilter; label: string }[] = [
+  {id: "all", label: "Alla"},
+  {id: "admin", label: "Admin"},
+  {id: "member", label: "Medlemmar"},
+];
+
+function fullName(member: UserSummary) {
+  return `${member.firstname} ${member.lastname}`;
+}
+
+function initials(member: UserSummary) {
+  return `${member.firstname.charAt(0)}${member.lastname.charAt(0)}`.toUpperCase();
+}
+
 function MemberModal({
-  form,
-  alert,
-  onChange,
-  onSubmit,
-  onClose,
-  onClearAlert,
-}: {
+                       form,
+                       alert,
+                       onChange,
+                       onSubmit,
+                       onClose,
+                     }: {
   form: MemberForm;
   alert: string;
   onChange: (form: MemberForm) => void;
   onSubmit: (event: React.FormEvent) => void;
   onClose: () => void;
-  onClearAlert: () => void;
 }) {
   return (
-    <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        background: "rgba(8,14,20,0.7)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        zIndex: 1000,
-      }}
-      onClick={onClose}
+    <AdminDialog
+      title="Ny medlem"
+      description="Medlemmen loggar in med e-post och lösenordet du anger, och byter lösenord vid första inloggningen."
+      onClose={onClose}
     >
-      <div
-        onClick={(event) => event.stopPropagation()}
-        style={{
-          width: "100%",
-          maxWidth: 420,
-          background: "#0d1824",
-          border: "1px solid #1e3347",
-          borderRadius: 16,
-          padding: 24,
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: 20,
-          }}
-        >
-          <h2
-            style={{
-              margin: 0,
-              color: "#e2eaf2",
-              fontFamily: "Outfit, sans-serif",
-              fontSize: 18,
-            }}
-          >
-            Lägg till medlem
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            style={{
-              background: "transparent",
-              border: "none",
-              color: "#7a94aa",
-              fontSize: 24,
-            }}
-          >
-            ×
-          </button>
-        </div>
-        <form onSubmit={onSubmit} style={{ display: "grid", gap: 16 }}>
-          <label style={{ color: "#7a94aa", fontSize: 14 }}>
-            Förnamn
+      <form onSubmit={onSubmit} className="grid gap-4">
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label htmlFor="member-firstname" className={labelClass}>Förnamn</label>
             <input
+              id="member-firstname"
               required
+              autoComplete="off"
               value={form.firstname}
-              onChange={(event) =>
-                onChange({ ...form, firstname: event.target.value })
-              }
-              style={{ ...fieldStyle, display: "block", marginTop: 8 }}
-              placeholder="T.ex. Anna"
+              onChange={(event) => onChange({...form, firstname: event.target.value})}
+              className={inputClass}
+              placeholder="Anna"
             />
-          </label>
-          <label style={{ color: "#7a94aa", fontSize: 14 }}>
-            Efternamn
-            <input
-              required
-              value={form.lastname}
-              onChange={(event) =>
-                onChange({ ...form, lastname: event.target.value })
-              }
-              style={{ ...fieldStyle, display: "block", marginTop: 8 }}
-              placeholder="T.ex. Svensson"
-            />
-          </label>
-          <label style={{ color: "#7a94aa", fontSize: 14 }}>
-            E-post
-            <input
-              required
-              type="email"
-              value={form.email}
-              onChange={(event) =>
-                onChange({ ...form, email: event.target.value })
-              }
-              style={{ ...fieldStyle, display: "block", marginTop: 8 }}
-              placeholder="anna@exempel.se"
-            />
-          </label>
-          <label style={{ color: "#7a94aa", fontSize: 14 }}>
-            Lösenord (minst 6 tecken, stor/liten bokstav, siffra och specialtecken)
-            <input
-              required
-              type="password"
-              value={form.password}
-              onChange={(event) =>
-                onChange({ ...form, password: event.target.value })
-              }
-              style={{ ...fieldStyle, display: "block", marginTop: 8 }}
-              placeholder="Ange ett lösenord"
-            />
-          </label>
-          {alert && (
-            <Alert message={alert} type="error" onClose={onClearAlert} />
-          )}
-          <div style={{ display: "flex", justifyContent: "flex-end", gap: 12 }}>
-            <button
-              type="button"
-              onClick={onClose}
-              style={{
-                background: "transparent",
-                border: "1px solid #1e3347",
-                color: "#7a94aa",
-                borderRadius: 10,
-                padding: "10px 14px",
-              }}
-            >
-              Avbryt
-            </button>
-            <button
-              type="submit"
-              style={{
-                background: "#00d4aa",
-                border: "none",
-                color: "#080e14",
-                borderRadius: 10,
-                padding: "10px 16px",
-                fontWeight: 700,
-              }}
-            >
-              Spara medlem
-            </button>
           </div>
-        </form>
-      </div>
-    </div>
+          <div>
+            <label htmlFor="member-lastname" className={labelClass}>Efternamn</label>
+            <input
+              id="member-lastname"
+              required
+              autoComplete="off"
+              value={form.lastname}
+              onChange={(event) => onChange({...form, lastname: event.target.value})}
+              className={inputClass}
+              placeholder="Svensson"
+            />
+          </div>
+        </div>
+        <div>
+          <label htmlFor="member-email" className={labelClass}>E-post</label>
+          <input
+            id="member-email"
+            required
+            type="email"
+            autoComplete="off"
+            value={form.email}
+            onChange={(event) => onChange({...form, email: event.target.value})}
+            className={inputClass}
+            placeholder="anna@exempel.se"
+          />
+        </div>
+        <div>
+          <label htmlFor="member-password" className={labelClass}>Tillfälligt lösenord</label>
+          <input
+            id="member-password"
+            required
+            type="password"
+            autoComplete="new-password"
+            aria-describedby="member-password-hint"
+            value={form.password}
+            onChange={(event) => onChange({...form, password: event.target.value})}
+            className={inputClass}
+          />
+          <p id="member-password-hint" className="mt-1.5 text-xs text-muted">
+            Minst 6 tecken med stor och liten bokstav, siffra och specialtecken.
+          </p>
+        </div>
+
+        {alert && <p role="alert"
+                     className="rounded-xl border border-rose/30 bg-rose/10 px-3.5 py-2.5 text-sm text-rose">{alert}</p>}
+
+        <div className="mt-2 flex justify-end gap-3">
+          <button type="button" onClick={onClose} className={secondaryButtonClass}>Avbryt</button>
+          <button type="submit" className={primaryButtonClass}>Lägg till medlem</button>
+        </div>
+      </form>
+    </AdminDialog>
   );
 }
 
@@ -197,6 +136,8 @@ export default function MembersAdmin() {
   const [formOpen, setFormOpen] = useState(false);
   const [deleting, setDeleting] = useState<UserSummary | null>(null);
   const [alert, setAlert] = useState("");
+  const [search, setSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
 
   useEffect(() => {
     getAllUsers()
@@ -241,9 +182,7 @@ export default function MembersAdmin() {
     if (!deleting) return;
     try {
       await deleteUser(deleting.id);
-      setMembers((current) =>
-        current.filter((member) => member.id !== deleting.id),
-      );
+      setMembers((current) => current.filter((member) => member.id !== deleting.id));
     } catch {
       setAlert("Kunde inte ta bort medlem");
     } finally {
@@ -251,86 +190,114 @@ export default function MembersAdmin() {
     }
   };
 
+  // Sök på namn eller e-post, filtrera på roll och sortera i bokstavsordning
+  const query = search.trim().toLowerCase();
+  const visibleMembers = members
+    .filter((member) =>
+      (roleFilter === "all" || (roleFilter === "admin") === member.isAdmin) &&
+      (!query || fullName(member).toLowerCase().includes(query) || member.email.toLowerCase().includes(query))
+    )
+    .sort((a, b) => fullName(a).localeCompare(fullName(b), "sv"));
+  const adminCount = members.filter((member) => member.isAdmin).length;
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1
-          className="text-2xl font-bold"
-          style={{ fontFamily: "Outfit, sans-serif", color: "#e2eaf2" }}
-        >
-          Medlemmar
-        </h1>
+    <div className="mx-auto max-w-4xl space-y-6 pb-24">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="font-display text-2xl font-bold text-text">Medlemmar</h1>
+          <p className="mt-1 text-sm text-muted">
+            {members.length} personer · {adminCount} {adminCount === 1 ? "administratör" : "administratörer"}
+          </p>
+        </div>
         <button
+          type="button"
           onClick={() => {
             setAlert("");
             setForm(emptyForm);
             setFormOpen(true);
           }}
-          className="px-4 py-2 rounded-lg text-sm font-semibold"
-          style={{ background: "#00d4aa", color: "#080e14" }}
+          className={primaryButtonClass}
         >
-          + Ny medlem
+          <IconPlus className="h-4 w-4"/>
+          Ny medlem
         </button>
       </div>
-      <div
-        className="rounded-xl overflow-hidden"
-        style={{ border: "1px solid #1e3347" }}
-      >
-        <table className="w-full">
-          <thead>
-            <tr style={{ background: "#111e2d" }}>
-              {["Förnamn", "Efternamn", "Admin", "Status", "Åtgärd"].map(
-                (heading) => (
-                  <th
-                    key={heading}
-                    className="px-4 py-3 text-left text-xs"
-                    style={{ color: "#7a94aa" }}
-                  >
-                    {heading}
-                  </th>
-                ),
-              )}
-            </tr>
-          </thead>
-          <tbody>
-            {members.map((member, index) => (
-              <tr
-                key={member.id}
-                style={{
-                  borderBottom: "1px solid #1e3347",
-                  background: index % 2 ? "#0a1520" : "transparent",
-                }}
-              >
-                <td className="px-4 py-3 text-sm" style={{ color: "#e2eaf2" }}>
-                  {member.firstname}
-                </td>
-                <td className="px-4 py-3 text-sm" style={{ color: "#e2eaf2" }}>
-                  {member.lastname}
-                </td>
-                <td className="px-4 py-3 text-sm" style={{ color: "#7a94aa" }}>
-                  {member.isAdmin ? "Ja" : "Nej"}
-                </td>
-                <td className="px-4 py-3">
-                  <AdminStatusBadge status="active" />
-                </td>
-                <td className="px-4 py-3">
-                  <button
-                    onClick={() => setDeleting(member)}
-                    className="text-xs px-3 py-2 rounded-lg"
-                    style={{
-                      background: "rgba(244,63,94,0.1)",
-                      color: "#f43f5e",
-                      border: "1px solid rgba(244,63,94,0.25)",
-                    }}
-                  >
-                    Ta bort
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="relative flex-1">
+          <IconSearch className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted"/>
+          <input
+            type="search"
+            aria-label="Sök medlem"
+            placeholder="Sök på namn eller e-post…"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            className={inputClass + " pl-10"}
+          />
+        </div>
+        <div role="group" aria-label="Filtrera på roll"
+             className="flex gap-1 rounded-xl border border-border bg-surface p-1">
+          {roleFilters.map((filter) => (
+            <button
+              key={filter.id}
+              type="button"
+              aria-pressed={roleFilter === filter.id}
+              onClick={() => setRoleFilter(filter.id)}
+              className={segmentClass(roleFilter === filter.id)}
+            >
+              {filter.label}
+            </button>
+          ))}
+        </div>
       </div>
+
+      {alert && !formOpen && <Alert message={alert} type="error" onClose={() => setAlert("")}/>}
+
+      {visibleMembers.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-border px-6 py-12 text-center">
+          <p className="text-sm text-muted">
+            {members.length === 0 ? "Inga medlemmar ännu." : "Ingen matchar sökningen."}
+          </p>
+        </div>
+      ) : (
+        <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-surface">
+          {visibleMembers.map((member) => (
+            <li key={member.id} className="flex items-center gap-4 px-4 py-3 transition-colors hover:bg-panel/60">
+              <span
+                aria-hidden="true"
+                className={[
+                  "flex h-10 w-10 shrink-0 items-center justify-center rounded-full font-display text-sm font-semibold",
+                  member.isAdmin ? "bg-teal/15 text-teal" : "bg-panel text-muted",
+                ].join(" ")}
+              >
+                {initials(member)}
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="truncate font-medium text-text">{fullName(member)}</span>
+                  {member.isAdmin && (
+                    <span
+                      className="rounded-full border border-teal/30 bg-teal/10 px-2 py-0.5 text-xs font-medium text-teal">
+                      Admin
+                    </span>
+                  )}
+                </div>
+                <p className="mt-0.5 truncate text-sm text-muted">{member.email}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDeleting(member)}
+                aria-label={`Ta bort ${fullName(member)}`}
+                title="Ta bort"
+                className={dangerIconButtonClass + " shrink-0"}
+              >
+                <IconTrash className="h-4 w-4"/>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
       {formOpen && (
         <MemberModal
           form={form}
@@ -338,12 +305,11 @@ export default function MembersAdmin() {
           onChange={setForm}
           onSubmit={submit}
           onClose={closeForm}
-          onClearAlert={() => setAlert("")}
         />
       )}
       {deleting && (
         <Alert
-          message={`Vill du ta bort ${deleting.firstname} ${deleting.lastname}?`}
+          message={`Vill du ta bort ${fullName(deleting)}?`}
           type="confirm"
           onClose={() => setDeleting(null)}
           onConfirm={remove}

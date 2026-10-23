@@ -1,6 +1,6 @@
-import type { LoginResponse } from "../services/authService";
+import type {LoginResponse} from "../services/authService";
 
-export default function UserAvatar({ user }: { user: LoginResponse | null }) {
+export default function UserAvatar({user}: { user: LoginResponse | null }) {
   const initials = user
     ? `${user.firstName[0] ?? ""}${user.lastName[0] ?? ""}`.toUpperCase()
     : "?";

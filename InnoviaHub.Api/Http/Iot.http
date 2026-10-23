@@ -1,0 +1,5 @@
+﻿@BASE_URL = http://localhost:5193
+
+### IOT - Get all devices
+GET {{BASE_URL}}/api/Iot/devices
+Accept: application/json

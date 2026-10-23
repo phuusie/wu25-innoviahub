@@ -7,46 +7,47 @@ type BottomNavProps = {
   onLogout: () => void;
 };
 
-export default function BottomNav({ currentView, isAdmin, onNavigate, onLogout }: BottomNavProps) {
-  const items: { id: View; label: string }[] = [
-    { id: "landing", label: "Landingssida" },
-    { id: "booking", label: "Bokningssystem" },
-    ...(isAdmin ? [{ id: "admin" as View, label: "Adminpanel" }] : []),
-  ];
+// Korta etiketter på mobil så att menyn får plats, längre på större skärmar
+const items: { id: View; short: string; long: string; adminOnly?: boolean }[] = [
+  {id: "landing", short: "Start", long: "Startsida"},
+  {id: "booking", short: "Boka", long: "Boka"},
+  {id: "admin", short: "Admin", long: "Adminpanel", adminOnly: true},
+];
 
+export default function BottomNav({currentView, isAdmin, onNavigate, onLogout}: BottomNavProps) {
   return (
     <nav
-      className="fixed bottom-6 left-1/2 z-50 flex gap-1 rounded-full px-2 py-2"
-      style={{
-        transform: "translateX(-50%)",
-        background: "rgba(13,24,36,0.95)",
-        border: "1px solid #1e3347",
-        backdropFilter: "blur(12px)",
-        boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
-      }}
+      aria-label="Huvudmeny"
+      className="fixed bottom-4 left-1/2 z-50 flex max-w-[calc(100vw-2rem)] -translate-x-1/2 gap-1 rounded-full border border-border bg-surface/95 p-1.5 shadow-2xl backdrop-blur-md sm:bottom-6"
     >
-      {items.map(({ id, label }) => (
-        <button
-          key={id}
-          onClick={() => onNavigate(id)}
-          className="px-4 py-2 rounded-full text-sm font-medium transition-all duration-200"
-          style={{
-            fontFamily: "Outfit, sans-serif",
-            background: currentView === id ? "#00d4aa" : "transparent",
-            color: currentView === id ? "#080e14" : "#7a94aa",
-          }}
-        >
-          {label}
-        </button>
-      ))}
+      {items
+        .filter((item) => !item.adminOnly || isAdmin)
+        .map(({id, short, long}) => {
+          const isCurrent = currentView === id;
+
+          return (
+            <button
+              key={id}
+              type="button"
+              aria-current={isCurrent ? "page" : undefined}
+              onClick={() => onNavigate(id)}
+              className={[
+                "min-h-11 whitespace-nowrap rounded-full px-4 font-display text-sm font-medium transition-colors cursor-pointer",
+                isCurrent ? "bg-teal text-bg" : "text-muted hover:text-text",
+              ].join(" ")}
+            >
+              <span className="sm:hidden">{short}</span>
+              <span className="hidden sm:inline">{long}</span>
+            </button>
+          );
+        })}
+
+      <span aria-hidden="true" className="my-2 w-px bg-border"/>
+
       <button
+        type="button"
         onClick={onLogout}
-        className="px-4 py-2 rounded-full text-sm font-medium transition-all duration-200"
-        style={{
-          fontFamily: "Outfit, sans-serif",
-          background: "transparent",
-          color: "#f43f5e",
-        }}
+        className="min-h-11 whitespace-nowrap rounded-full px-4 font-display text-sm font-medium text-muted transition-colors hover:text-rose cursor-pointer"
       >
         Logga ut
       </button>

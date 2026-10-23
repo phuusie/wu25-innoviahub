@@ -1,12 +1,13 @@
 ﻿import type {Resource} from "../../types/bookingTypes";
 import type {LoginResponse} from "../../services/authService";
-import {getBookingEndTime} from "../../utils/bookingUtils";
+import {formatDuration, formatLongDate} from "../../utils/bookingUtils";
+import {ResourceTypeIcon} from "../Icons";
 
 type BookingOverviewProps = {
   selected: Resource;
   date: string;
   timeSlot: string;
-  duration: string;
+  endTime: string;
   purpose: string;
   user: LoginResponse | null;
   bookingError: string | null;
@@ -22,7 +23,7 @@ export default function BookingOverview(
     selected,
     date,
     timeSlot,
-    duration,
+    endTime,
     purpose,
     user,
     bookingError,
@@ -31,208 +32,76 @@ export default function BookingOverview(
     onCancel,
     onConfirm,
   }: BookingOverviewProps) {
+  const rows = [
+    {label: "Datum", value: formatLongDate(date), mono: false},
+    {label: "Tid", value: `${timeSlot}–${endTime}`, mono: true},
+    {label: "Längd", value: formatDuration(timeSlot, endTime), mono: false},
+    {label: "Bokas av", value: `${user?.firstName ?? ""} ${user?.lastName ?? ""}`.trim(), mono: false},
+    ...(purpose ? [{label: "Syfte", value: purpose, mono: false}] : []),
+  ];
+
   return (
     <div>
       <button
+        type="button"
         onClick={onBack}
-        className="flex items-center gap-2 mb-6 text-sm"
-        style={{color: "#7a94aa"}}
+        className="mb-6 flex min-h-11 items-center gap-2 text-sm text-muted hover:text-text"
       >
-        ← Tillbaka
+        <span aria-hidden="true">←</span> Tillbaka
       </button>
-      <div className="max-w-lg mx-auto mt-10">
-        <h1
-          className="text-2xl font-bold mb-6"
-          style={{
-            fontFamily: "Outfit, sans-serif",
-            color: "#e2eaf2",
-          }}
-        >
-          Översikt
-        </h1>
 
-        <div
-          className="rounded-xl p-6 mb-6"
-          style={{
-            background: "#0d1824",
-            border: "1px solid #1e3347",
-          }}
-        >
-          <div
-            className="flex items-center gap-3 mb-5 pb-5"
-            style={{borderBottom: "1px solid #1e3347"}}
-          >
-            <div
-              className="rounded-xl flex items-center justify-center text-2xl"
-              style={{
-                width: 52,
-                height: 52,
-                background: selected.color + "18",
-                color: selected.color,
-              }}
-            >
-              {selected.icon}
+      <div className="mx-auto max-w-lg">
+        <h1 className="font-display text-2xl font-bold text-text">Stämmer det här?</h1>
+        <p className="mt-1 mb-6 text-sm text-muted">Kontrollera bokningen innan du bekräftar.</p>
+
+        <div className="mb-6 rounded-2xl border border-border bg-surface p-6">
+          <div className="mb-4 flex items-center gap-4 border-b border-border pb-5">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-teal/10 text-teal">
+              <ResourceTypeIcon name={selected.type.name} className="h-6 w-6"/>
             </div>
-
             <div>
-              <div
-                className="font-bold text-lg"
-                style={{
-                  fontFamily: "Outfit, sans-serif",
-                  color: "#e2eaf2",
-                }}
-              >
-                {selected.label}
-              </div>
-
-              <div
-                className="text-sm"
-                style={{color: "#7a94aa"}}
-              >
-                {selected.sub}
-              </div>
+              <p className="font-display text-lg font-bold text-text">{selected.label}</p>
+              <p className="text-sm text-muted">{selected.type.name} · {selected.sub}</p>
             </div>
           </div>
 
-          {[
-            {
-              label: "Datum",
-              value: new Date(date).toLocaleDateString("sv-SE", {
-                weekday: "long",
-                year: "numeric",
-                month: "long",
-                day: "numeric",
-              }),
-            },
-            {
-              label: "Starttid",
-              value: timeSlot,
-            },
-            {
-              label: "Sluttid",
-              value: getBookingEndTime(
-                new Date(`${date}T${timeSlot}:00`),
-                duration
-              ).toLocaleTimeString("sv-SE", {
-                hour: "2-digit",
-                minute: "2-digit",
-              }),
-            },
-            {
-              label: "Längd",
-              value: duration,
-            },
-            {
-              label: "Bokad av",
-              value: `${user?.firstName ?? ""} ${user?.lastName ?? ""}`.trim(),
-            },
-            ...(purpose
-              ? [
-                {
-                  label: "Syfte",
-                  value: purpose,
-                },
-              ]
-              : []),
-          ].map((row) => (
-            <div
-              key={row.label}
-              className="flex justify-between items-start py-2.5"
-              style={{borderBottom: "1px solid #1e3347"}}
-            >
-            <span
-              className="text-sm"
-              style={{color: "#7a94aa"}}
-            >
-              {row.label}
-            </span>
-
-              <span
-                className="text-sm font-medium text-right max-w-xs"
-                style={{
-                  color: "#e2eaf2",
-                  fontFamily:
-                    row.label === "Starttid" || row.label === "Sluttid"
-                      ? "JetBrains Mono, monospace"
-                      : "inherit",
-                }}
-              >
-              {row.value}
-            </span>
-            </div>
-          ))}
+          <dl>
+            {rows.map((row) => (
+              <div key={row.label}
+                   className="flex items-start justify-between gap-6 border-b border-border py-3 last:border-b-0">
+                <dt className="text-sm text-muted">{row.label}</dt>
+                <dd
+                  className={`max-w-xs text-right text-sm font-medium text-text first-letter:uppercase ${row.mono ? "mono" : ""}`}>
+                  {row.value}
+                </dd>
+              </div>
+            ))}
+          </dl>
         </div>
 
-        <div
-          className="rounded-xl px-4 py-3 mb-6 flex items-start gap-3"
-          style={{
-            background: "rgba(0,212,170,0.08)",
-            border: "1px solid rgba(0,212,170,0.2)",
-          }}
-        >
-        <span
-          style={{
-            color: "#00d4aa",
-            fontSize: 16,
-            marginTop: 1,
-          }}
-        >
-          ℹ
-        </span>
-
-          <p
-            className="text-sm"
-            style={{
-              color: "#7a94aa",
-              lineHeight: 1.6,
-            }}
-          >
-            Du får en bekräftelse via e-post och kan se din bokning i
-            aktivitetsloggen. Avbokning är möjlig upp till 1 timme innan.
-          </p>
-        </div>
+        <p className="mb-6 text-sm text-muted">
+          Bokningen sparas direkt och syns under <span className="text-text">Din nästa bokning</span> på startsidan.
+        </p>
 
         {bookingError && (
-          <p
-            className="text-sm mb-6"
-            style={{color: "#f43f5e"}}
-          >
-            {bookingError}
-          </p>
+          <p role="alert" className="mb-6 text-sm text-rose">{bookingError}</p>
         )}
 
         <div className="flex gap-3">
           <button
+            type="button"
             onClick={onCancel}
-            className="flex-1 py-3 rounded-xl font-semibold text-sm"
-            style={{
-              background: "#111e2d",
-              border: "1px solid #1e3347",
-              color: "#7a94aa",
-              fontFamily: "Outfit, sans-serif",
-            }}
+            className="min-h-12 flex-1 rounded-xl border border-field font-display text-sm font-semibold text-muted transition-colors hover:text-text"
           >
             Avbryt
           </button>
-
           <button
+            type="button"
             onClick={onConfirm}
             disabled={isBooking}
-            className="flex-1 py-3 rounded-xl font-semibold text-sm transition-all duration-150"
-            style={{
-              background: "#00d4aa",
-              color: "#080e14",
-              fontFamily: "Outfit, sans-serif",
-              opacity: isBooking ? 0.6 : 1,
-            }}
-            onMouseEnter={(e) =>
-              (e.currentTarget.style.background = "#00f0c4")
-            }
-            onMouseLeave={(e) =>
-              (e.currentTarget.style.background = "#00d4aa")
-            }
+            className="min-h-12 flex-1 rounded-xl bg-teal font-display text-sm font-semibold text-bg transition-opacity disabled:opacity-60"
           >
-            {isBooking ? "Skapar bokning..." : "Bekräfta bokning ✓"}
+            {isBooking ? "Bokar…" : "Bekräfta bokning"}
           </button>
         </div>
       </div>

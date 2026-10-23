@@ -1,4 +1,6 @@
-import { adminTabs, type AdminTab } from "./adminData";
+import type {ReactNode} from "react";
+import {adminTabs, type AdminTab} from "./adminData";
+import {IconDashboard, IconGrid, IconThermometer, IconUsers} from "./Icons";
 
 type AdminNavigationProps = {
   tab: AdminTab;
@@ -7,50 +9,49 @@ type AdminNavigationProps = {
   mobile?: boolean;
 };
 
+const tabIcons: Record<AdminTab, ReactNode> = {
+  dashboard: <IconDashboard className="h-4 w-4"/>,
+  sensors: <IconThermometer className="h-4 w-4"/>,
+  resources: <IconGrid className="h-4 w-4"/>,
+  members: <IconUsers className="h-4 w-4"/>,
+};
+
 export default function AdminNavigation({
-  tab,
-  onTabChange,
-  alertCount,
-  mobile = false,
-}: AdminNavigationProps) {
+                                          tab,
+                                          onTabChange,
+                                          alertCount,
+                                          mobile = false,
+                                        }: AdminNavigationProps) {
   return (
-    <nav className={mobile ? "flex gap-2 flex-wrap" : "space-y-1"}>
-      {adminTabs.map((item) => (
-        <button
-          key={item.id}
-          onClick={() => onTabChange(item.id)}
-          className={
-            mobile
-              ? "px-3 py-1.5 rounded-lg text-xs font-medium"
-              : "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium"
-          }
-          style={{
-            background:
-              tab === item.id
-                ? mobile
-                  ? "#00d4aa"
-                  : "rgba(0,212,170,0.1)"
-                : mobile
-                  ? "#111e2d"
-                  : "transparent",
-            color:
-              tab === item.id ? (mobile ? "#080e14" : "#00d4aa") : "#7a94aa",
-            border: `1px solid ${tab === item.id ? "#00d4aa" : "#1e3347"}`,
-            fontFamily: "Outfit, sans-serif",
-          }}
-        >
-          <span>{item.icon}</span>
-          {item.label}
-          {item.id === "sensors" && alertCount > 0 && (
-            <span
-              className="ml-auto rounded-full text-xs w-5 h-5 flex items-center justify-center font-bold"
-              style={{ background: "#f43f5e", color: "white" }}
-            >
-              {alertCount}
-            </span>
-          )}
-        </button>
-      ))}
+    <nav aria-label="Adminmeny" className={mobile ? "flex flex-wrap gap-2" : "space-y-1"}>
+      {adminTabs.map((item) => {
+        const isActive = tab === item.id;
+
+        return (
+          <button
+            key={item.id}
+            type="button"
+            onClick={() => onTabChange(item.id)}
+            aria-current={isActive ? "page" : undefined}
+            className={[
+              "flex items-center gap-2.5 font-display font-medium transition-colors cursor-pointer",
+              mobile ? "min-h-10 rounded-lg border px-3 text-sm" : "min-h-11 w-full rounded-xl px-3 text-sm",
+              isActive
+                ? "bg-teal/10 text-teal" + (mobile ? " border-teal/40" : "")
+                : "text-muted hover:bg-panel hover:text-text" + (mobile ? " border-border" : ""),
+            ].join(" ")}
+          >
+            {tabIcons[item.id]}
+            {item.label}
+            {item.id === "sensors" && alertCount > 0 && (
+              <span
+                className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-rose px-1 text-xs font-bold text-white">
+                {alertCount}
+              </span>
+            )}
+          </button>
+        );
+      })}
     </nav>
   );
 }
