@@ -1,4 +1,4 @@
-import type { Booking } from "../../services/bookingApiService.ts";
+import type {Booking} from "../../services/bookingApiService.ts";
 
 type BookingNotificationProps = {
   booking: Booking;
@@ -6,9 +6,9 @@ type BookingNotificationProps = {
 };
 
 export default function BookingNotification({
-  booking,
-  onClose,
-}: BookingNotificationProps) {
+                                              booking,
+                                              onClose,
+                                            }: BookingNotificationProps) {
   return (
     <aside
       className="animate-slide-in fixed right-4 top-4 z-50 w-[min(22rem,calc(100vw-2rem))] rounded-xl p-4"
@@ -23,16 +23,16 @@ export default function BookingNotification({
       <div className="flex items-start gap-3">
         <div
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
-          style={{ background: "rgba(0, 212, 170, 0.14)", color: "#00d4aa" }}
+          style={{background: "rgba(0, 212, 170, 0.14)", color: "#00d4aa"}}
           aria-hidden="true"
         >
           ✓
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold" style={{ color: "#e2eaf2" }}>
+          <p className="text-sm font-semibold" style={{color: "#e2eaf2"}}>
             Ny bokning skapad
           </p>
-          <p className="mt-1 text-sm" style={{ color: "#7a94aa" }}>
+          <p className="mt-1 text-sm" style={{color: "#7a94aa"}}>
             {booking.resource.name} har precis bokats.
           </p>
         </div>
@@ -40,7 +40,7 @@ export default function BookingNotification({
           type="button"
           onClick={onClose}
           className="-mr-1 -mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-lg"
-          style={{ color: "#7a94aa" }}
+          style={{color: "#7a94aa"}}
           aria-label="Stäng meddelandet"
         >
           ×

@@ -1,16 +1,17 @@
-import { useEffect, useState } from "react";
-import type { LoginResponse } from "../services/authService";
+import {useEffect, useState} from "react";
+import type {LoginResponse} from "../services/authService";
 import Alert from "../components/Alert";
+import UserAvatar from "../components/UserAvatar";
 import AdminDashboard from "../components/AdminDashboard";
 import AdminNavigation from "../components/AdminNavigation";
 import AdminSensors from "../components/AdminSensors";
 import MembersAdmin from "../components/MembersAdmin";
 import ResourcesAdmin from "../components/ResourcesAdmin";
-import { sensors, type AdminTab } from "../components/adminData";
-import { deleteBooking, getAllBookings, type Booking } from "../services/bookingApiService";
-import { getAllResources, type Resource } from "../services/resourceService";
+import {sensors, type AdminTab} from "../components/adminData";
+import {deleteBooking, getAllBookings, type Booking} from "../services/bookingApiService";
+import {getAllResources, type Resource} from "../services/resourceService";
 
-export default function AdminPage({ onBack, user }: { onBack: () => void; user: LoginResponse }) {
+export default function AdminPage({onBack, user}: { onBack: () => void; user: LoginResponse }) {
   const [tab, setTab] = useState<AdminTab>("dashboard");
   const [recentBookings, setRecentBookings] = useState<Booking[]>([]);
   const [bookingError, setBookingError] = useState<string | null>(null);
@@ -51,22 +52,23 @@ export default function AdminPage({ onBack, user }: { onBack: () => void; user: 
   }
 
   const now = new Date();
-  const activeBookingCount = recentBookings.filter((booking) => {
-    const start = new Date(booking.startTime);
-    const end = new Date(booking.endTime);
-    return start <= now && end > now;
-  }).length;
+  const activeBookings = recentBookings.filter((booking) =>
+    new Date(booking.startTime) <= now && new Date(booking.endTime) > now
+  );
+  // Pågående och framtida bokningar, gamla visas inte
+  const upcomingBookings = recentBookings.filter((booking) => new Date(booking.endTime) > now);
   const today = now.toLocaleDateString("sv-SE");
   const newBookingCount = recentBookings.filter(
     (booking) => new Date(booking.createdAt).toLocaleDateString("sv-SE") === today,
   ).length;
-  const occupiedResourceIds = new Set(recentBookings.map((booking) => booking.resource.id));
+  // Beläggning = andel resurser som är bokade just nu
+  const occupiedResourceIds = new Set(activeBookings.map((booking) => booking.resource.id));
   const occupancyPercentage = resources.length === 0
     ? 0
     : Math.min(100, Math.round((occupiedResourceIds.size / resources.length) * 100));
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: "#080e14" }}>
+    <div className="flex min-h-screen flex-col bg-bg">
       {bookingToDelete && (
         <Alert
           message="Vill du ta bort bokningen?"
@@ -75,54 +77,75 @@ export default function AdminPage({ onBack, user }: { onBack: () => void; user: 
           onConfirm={confirmDeleteBooking}
         />
       )}
-      <AdminHeader onBack={onBack} user={user} alertCount={alertCount} />
+      <AdminHeader onBack={onBack} user={user} alertCount={alertCount}/>
       <div className="flex flex-1">
-        <aside className="hidden md:flex flex-col w-52 shrink-0 pt-6 px-3" style={{ borderRight: "1px solid #1e3347" }}>
-          <AdminNavigation tab={tab} onTabChange={setTab} alertCount={alertCount} />
-          <SystemStatus />
+        <aside className="hidden w-52 shrink-0 flex-col border-r border-border px-3 pt-6 md:flex">
+          <AdminNavigation tab={tab} onTabChange={setTab} alertCount={alertCount}/>
+          <SystemStatus/>
         </aside>
         <main className="flex-1 p-6 overflow-auto">
           <div className="flex gap-2 mb-6 md:hidden flex-wrap">
-            <AdminNavigation tab={tab} onTabChange={setTab} alertCount={alertCount} mobile />
+            <AdminNavigation tab={tab} onTabChange={setTab} alertCount={alertCount} mobile/>
           </div>
           {tab === "dashboard" && (
             <AdminDashboard
               alerts={alertCount}
-              recentBookings={recentBookings}
+              recentBookings={upcomingBookings}
               bookingError={bookingError}
               onDeleteBooking={setBookingToDelete}
               onClearBookingError={() => setBookingError(null)}
-              activeBookingCount={activeBookingCount}
+              activeBookingCount={activeBookings.length}
               newBookingCount={newBookingCount}
               occupancyPercentage={occupancyPercentage}
             />
           )}
-          {tab === "sensors" && <AdminSensors />}
-          {tab === "resources" && <ResourcesAdmin />}
-          {tab === "members" && <MembersAdmin />}
+          {tab === "sensors" && <AdminSensors/>}
+          {tab === "resources" && <ResourcesAdmin/>}
+          {tab === "members" && <MembersAdmin/>}
         </main>
       </div>
     </div>
   );
 }
 
-function AdminHeader({ onBack, user, alertCount }: { onBack: () => void; user: LoginResponse; alertCount: number }) {
+function AdminHeader({onBack, user, alertCount}: { onBack: () => void; user: LoginResponse; alertCount: number }) {
   return (
-    <header className="sticky top-0 z-40 flex items-center justify-between px-6 py-4" style={{ background: "rgba(8,14,20,0.95)", borderBottom: "1px solid #1e3347", backdropFilter: "blur(16px)" }}>
-      <div className="flex items-center gap-4">
-        <button onClick={onBack} className="text-sm" style={{ color: "#7a94aa" }}>← Tillbaka</button>
-        <div className="w-px h-4" style={{ background: "#1e3347" }} />
+    <header
+      className="sticky top-0 z-40 flex items-center justify-between gap-3 border-b border-border bg-bg/95 px-4 py-3 backdrop-blur-lg sm:px-6 sm:py-4">
+      <div className="flex items-center gap-3 sm:gap-4">
+        <button
+          type="button"
+          onClick={onBack}
+          aria-label="Tillbaka till startsidan"
+          className="flex min-h-11 items-center gap-1 text-sm text-muted hover:text-text"
+        >
+          <span aria-hidden="true">←</span>
+          <span className="hidden sm:inline">Tillbaka</span>
+        </button>
+        <span aria-hidden="true" className="h-4 w-px bg-border"/>
         <div className="flex items-center gap-2">
-          <div className="rounded-lg flex items-center justify-center" style={{ width: 32, height: 32, background: "linear-gradient(135deg, #00d4aa, #0070f3)" }}>◈</div>
-          <span className="font-bold" style={{ fontFamily: "Outfit, sans-serif", color: "#e2eaf2" }}>Admin</span>
+          <div
+            aria-hidden="true"
+            className="flex h-8 w-8 items-center justify-center rounded-lg"
+            style={{background: "linear-gradient(135deg, #00d4aa, #0070f3)"}}
+          >
+            ◈
+          </div>
+          <span className="font-display font-bold text-text">Admin</span>
         </div>
       </div>
       <div className="flex items-center gap-3">
-        {alertCount > 0 && <div className="flex items-center gap-2 px-3 py-1.5 rounded-full" style={{ background: "rgba(244,63,94,0.1)", border: "1px solid rgba(244,63,94,0.25)" }}><div className="pulse-dot w-2 h-2 rounded-full" style={{ background: "#f43f5e" }} /><span className="text-xs mono" style={{ color: "#f43f5e" }}>{alertCount} larm aktiva</span></div>}
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold" style={{ background: "linear-gradient(135deg, #00d4aa33, #3b82f633)", color: "#00d4aa", border: "1px solid #1e3347" }}>{user.firstName[0]}{user.lastName[0]}</div>
-          <span className="text-sm hidden md:block" style={{ color: "#e2eaf2" }}>{user.firstName} {user.lastName}</span>
-        </div>
+        {alertCount > 0 && (
+          <div
+            className="flex items-center gap-2 whitespace-nowrap rounded-full border border-rose/30 bg-rose/10 px-3 py-1.5">
+            <span aria-hidden="true" className="pulse-dot h-2 w-2 rounded-full bg-rose"/>
+            <span className="mono text-xs text-rose">
+              {alertCount === 1 ? "1 aktivt larm" : `${alertCount} aktiva larm`}
+            </span>
+          </div>
+        )}
+        <UserAvatar user={user}/>
+        <span className="hidden text-sm text-text md:block">{user.firstName} {user.lastName}</span>
       </div>
     </header>
   );
@@ -131,9 +154,12 @@ function AdminHeader({ onBack, user, alertCount }: { onBack: () => void; user: L
 function SystemStatus() {
   return (
     <div className="mt-auto pb-6 px-3">
-      <div className="rounded-xl p-3" style={{ background: "#111e2d", border: "1px solid #1e3347" }}>
-        <div className="text-xs mono mb-1" style={{ color: "#7a94aa" }}>Systemstatus</div>
-        <div className="flex items-center gap-2"><div className="pulse-dot w-2 h-2 rounded-full" style={{ background: "#00d4aa" }} /><span className="text-xs" style={{ color: "#00d4aa" }}>Alla system online</span></div>
+      <div className="rounded-xl border border-border bg-panel p-3">
+        <div className="mono mb-1 text-xs text-muted">Systemstatus</div>
+        <div className="flex items-center gap-2">
+          <span aria-hidden="true" className="pulse-dot h-2 w-2 rounded-full bg-teal"/>
+          <span className="text-xs text-teal">Alla system online</span>
+        </div>
       </div>
     </div>
   );

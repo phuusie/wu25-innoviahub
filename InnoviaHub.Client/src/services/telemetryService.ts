@@ -38,4 +38,4 @@ export async function startTelemetryConnection() {
   return telemetryConnection;
 }
 
-export { telemetryConnection };
+export {telemetryConnection};

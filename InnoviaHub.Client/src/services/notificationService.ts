@@ -1,22 +1,22 @@
 import {
-    HubConnectionBuilder,
-    HubConnectionState,
+  HubConnectionBuilder,
+  HubConnectionState,
 } from "@microsoft/signalr";
-import { BASE_API_URL} from "../config/api.ts";
+import {BASE_API_URL} from "../config/api.ts";
 
 const connection = new HubConnectionBuilder()
-    .withUrl(`${BASE_API_URL}/hubs/notifications`, {
-        withCredentials: true,
-    })
-    .withAutomaticReconnect()
-    .build();
+  .withUrl(`${BASE_API_URL}/hubs/notifications`, {
+    withCredentials: true,
+  })
+  .withAutomaticReconnect()
+  .build();
 
 export async function startNotificationConnection() {
-    if (connection.state === HubConnectionState.Disconnected) {
-        await connection.start();
-    }
+  if (connection.state === HubConnectionState.Disconnected) {
+    await connection.start();
+  }
 
-    return connection;
+  return connection;
 }
 
-export { connection };
+export {connection};

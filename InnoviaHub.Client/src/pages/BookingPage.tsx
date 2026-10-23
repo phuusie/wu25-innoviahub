@@ -11,26 +11,49 @@ import {
   type Resource as ApiResource,
   type ResourceType,
 } from "../services/resourceService";
-import UserAvatar from "../components/UserAvatar";
+import AppHeader from "../components/AppHeader";
 import BookingNotification from "../components/Booking/BookingNotification.tsx";
 import {
   connection,
   startNotificationConnection,
 } from "../services/notificationService";
 import {
+  addDays,
+  availableStartTimes,
   bookingOverlapsSelection,
-  generateTimeSlots, isPastTime,
-  getBookingEndTime
+  CLOSING_MINUTES,
+  defaultEndTime,
+  formatTime,
+  generateTimeSlots,
+  OPENING_MINUTES,
+  STEP_MINUTES,
+  toDateString,
+  toDateTime,
+  toMinutes,
 } from "../utils/bookingUtils";
+import {getAvailability} from "../services/availabilityService";
 import BookingStepIndicator from "../components/Booking/BookingStepIndicator.tsx";
 import ResourceTypeSelection from "../components/Booking/ResourceTypeSelection.tsx";
 import BookingConfiguration from "../components/Booking/BookingConfiguration.tsx";
 import BookingOverview from "../components/Booking/BookingOverview.tsx";
-import type { Resource, Step } from "../types/bookingTypes.ts";
+import type {Resource, Step} from "../types/bookingTypes.ts";
 import BookingConfirmation from "../components/Booking/BookingConfirmation.tsx";
 
-const timeSlots = generateTimeSlots(8 * 60, 17 * 60, 15);
-const durations = ["1 timme", "2 timmar", "3 timmar", "Heldag"];
+// Starttider från öppning till sista kvarten före stängning
+const timeSlots = generateTimeSlots(OPENING_MINUTES, CLOSING_MINUTES - STEP_MINUTES, STEP_MINUTES);
+
+// Idag om det finns tider kvar, annars imorgon
+function initialBookingDate() {
+  const today = toDateString(new Date());
+
+  return availableStartTimes(timeSlots, today).length > 0
+    ? today
+    : addDays(today, 1);
+}
+
+function initialStartTime(date: string) {
+  return availableStartTimes(timeSlots, date)[0] ?? "";
+}
 
 function mapApiResource(resource: ApiResource): Resource {
   return {
@@ -45,7 +68,12 @@ function mapApiResource(resource: ApiResource): Resource {
   };
 }
 
-export default function BookingPage({user}: { user: LoginResponse | null }) {
+type BookingPageProps = {
+  user: LoginResponse | null;
+  onGoHome: () => void;
+};
+
+export default function BookingPage({user, onGoHome}: BookingPageProps) {
   const [resources, setResources] = useState<Resource[]>([]);
   const [resourceTypes, setResourceTypes] = useState<ResourceType[]>([]);
   const [selectedTypeId, setSelectedTypeId] = useState<string | null>(null);
@@ -53,19 +81,66 @@ export default function BookingPage({user}: { user: LoginResponse | null }) {
   const [createdBooking, setCreatedBooking] = useState<Booking | null>(null);
   const [selected, setSelected] = useState<Resource | null>(null);
   const [step, setStep] = useState<Step>("select");
-  const [timeSlot, setTimeSlot] = useState("");
-  const [duration, setDuration] = useState("1 timmar");
+  const [date, setDate] = useState(initialBookingDate);
+  const [timeSlot, setTimeSlot] = useState(() => initialStartTime(initialBookingDate()));
+  const [endTime, setEndTime] = useState(() => {
+    const start = initialStartTime(initialBookingDate());
+    return start ? defaultEndTime(start) : "";
+  });
+  const [dateNotice, setDateNotice] = useState<string | null>(
+    () => initialBookingDate() !== toDateString(new Date())
+      ? "Det finns inga fler tider idag, så vi visar imorgon."
+      : null
+  );
+  const [freeRanges, setFreeRanges] = useState<Record<string, string[]>>({});
   const [purpose, setPurpose] = useState("");
-  const [date, setDate] = useState(new Date().toLocaleDateString("se-SE"));
   const [isBooking, setIsBooking] = useState(false);
   const [bookingError, setBookingError] = useState<string | null>(null);
   const [latestBooking, setLatestBooking] = useState<Booking | null>(null);
 
-  const filtered = resources
+  const startTimes = availableStartTimes(timeSlots, date);
+
+  // Status räknas ut direkt från bokningarna, så den alltid stämmer med valt datum och tid
+  const filtered: Resource[] = resources
     .filter((r) => r.type.id === selectedTypeId)
     .sort((a, b) =>
       a.label.localeCompare(b.label, "sv-SE", {numeric: true})
-    );
+    )
+    .map((resource) => ({
+      ...resource,
+      status: timeSlot && endTime && bookings.some((booking) =>
+        bookingOverlapsSelection(booking, resource.id, date, timeSlot, endTime),
+      )
+        ? "booked"
+        : "available",
+    }));
+
+  // Ny starttid nollställer sluttiden, så att nästa klick i tidsrutnätet väljer den
+  function changeStartTime(newStart: string) {
+    setTimeSlot(newStart);
+    setEndTime("");
+    setSelected(null);
+  }
+
+  function changeEndTime(newEnd: string) {
+    setEndTime(newEnd);
+    setSelected(null);
+  }
+
+  // Nytt datum: byt starttid om den valda har passerat den dagen
+  function changeDate(newDate: string) {
+    const times = availableStartTimes(timeSlots, newDate);
+
+    setDate(newDate);
+    setDateNotice(null);
+    setSelected(null);
+
+    if (times.includes(timeSlot)) return;
+
+    const newStart = times[0] ?? "";
+    setTimeSlot(newStart);
+    if (newStart && (!endTime || toMinutes(endTime) <= toMinutes(newStart))) setEndTime(defaultEndTime(newStart));
+  }
 
   function handleSelectResourceType(resourceTypeId: string) {
     setSelectedTypeId(resourceTypeId);
@@ -76,17 +151,14 @@ export default function BookingPage({user}: { user: LoginResponse | null }) {
   async function confirmBooking() {
     if (!selected) return;
 
-    const startTime = new Date(`${date}T${timeSlot}:00`);
-    const endTime = getBookingEndTime(startTime, duration);
-
     setIsBooking(true);
     setBookingError(null);
 
     try {
       const booking = await createBooking({
         resourceId: selected.id,
-        startTime: startTime.toISOString(),
-        endTime: endTime.toISOString(),
+        startTime: toDateTime(date, timeSlot).toISOString(),
+        endTime: toDateTime(date, endTime).toISOString(),
       });
 
       setCreatedBooking(booking);
@@ -133,18 +205,31 @@ export default function BookingPage({user}: { user: LoginResponse | null }) {
     loadResources();
   }, []);
 
+  // Lediga intervall per resurs, från samma endpoint som AI-assistenten använder
   useEffect(() => {
-    setResources((currentResources) =>
-      currentResources.map((resource) => ({
-        ...resource,
-        status: bookings.some((booking) =>
-          bookingOverlapsSelection(booking, resource.id, date, timeSlot, duration),
-        )
-          ? "booked"
-          : "available",
-      })),
-    );
-  }, [bookings, date, timeSlot, duration]);
+    if (!selectedTypeId) return;
+
+    let isCurrent = true;
+
+    getAvailability(date, selectedTypeId)
+      .then((availability) => {
+        if (!isCurrent) return;
+
+        setFreeRanges(Object.fromEntries(
+          availability.map((resource) => [
+            resource.resourceId,
+            resource.freeSlots.map((slot) => `${formatTime(slot.startTime)}–${formatTime(slot.endTime)}`),
+          ])
+        ));
+      })
+      .catch(() => {
+        if (isCurrent) setFreeRanges({});
+      });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [date, selectedTypeId, bookings]);
 
   useEffect(() => {
     let isMounted = true;
@@ -190,50 +275,19 @@ export default function BookingPage({user}: { user: LoginResponse | null }) {
     return () => window.clearTimeout(timeoutId);
   }, [latestBooking]);
 
-  useEffect(() => {
-    const firstAvailableTime = timeSlots.find((time) => !isPastTime(date, time));
-
-    if (firstAvailableTime)
-      setTimeSlot(firstAvailableTime);
-  }, []);
 
   return (
-    <div className="min-h-screen" style={{background: "#080e14"}}>
+    <div className="min-h-screen bg-bg">
       {latestBooking && (
         <BookingNotification
           booking={latestBooking}
           onClose={() => setLatestBooking(null)}
         />
       )}
-      <header
-        className="sticky top-0 z-40 flex items-center justify-between px-6 py-4"
-        style={{
-          background: "rgba(8,14,20,0.9)",
-          borderBottom: "1px solid #1e3347",
-          backdropFilter: "blur(16px)",
-        }}
-      >
-        <div className="flex items-center gap-3">
-          <div
-            className="rounded-lg flex items-center justify-center"
-            style={{width: 36, height: 36, background: "linear-gradient(135deg, #00d4aa, #0070f3)"}}
-          >
-            <span style={{fontSize: 18}}>◈</span>
-          </div>
-          <span className="text-xl font-bold" style={{fontFamily: "Outfit, sans-serif", color: "#e2eaf2"}}>
-            Innovia<span style={{color: "#00d4aa"}}>Hub</span>
-          </span>
-        </div>
-        <div className="flex items-center gap-3">
-          <UserAvatar user={user}/>
-          <span className="text-sm" style={{color: "#7a94aa"}}>
-            Inloggad som <span style={{color: "#e2eaf2"}}>{user?.firstName} {user?.lastName}</span>
-          </span>
-        </div>
-      </header>
+      <AppHeader user={user}/>
 
-      <div className="max-w-6xl mx-auto px-6 pt-8 pb-32">
-        <BookingStepIndicator step={step} />
+      <main className="max-w-6xl mx-auto px-6 pt-8 pb-32">
+        <BookingStepIndicator step={step}/>
 
         {step === "select" && (
           <ResourceTypeSelection
@@ -245,26 +299,17 @@ export default function BookingPage({user}: { user: LoginResponse | null }) {
         {step === "configure" && (
           <BookingConfiguration
             date={date}
-            duration={duration}
+            dateNotice={dateNotice}
             timeSlot={timeSlot}
-            timeSlots={timeSlots}
-            durations={durations}
+            endTime={endTime}
+            startTimes={startTimes}
             resources={filtered}
+            freeRanges={freeRanges}
             selected={selected}
             purpose={purpose}
-            isPastTime={isPastTime}
-            onDateChange={(newDate) => {
-              setDate(newDate);
-              setSelected(null);
-            }}
-            onDurationChange={(newDuration) => {
-              setDuration(newDuration);
-              setSelected(null);
-            }}
-            onTimeSlotChange={(newTimeSlot) => {
-              setTimeSlot(newTimeSlot);
-              setSelected(null);
-            }}
+            onDateChange={changeDate}
+            onTimeSlotChange={changeStartTime}
+            onEndTimeChange={changeEndTime}
             onSelectResource={setSelected}
             onPurposeChange={setPurpose}
             onBack={() => setStep("select")}
@@ -277,7 +322,7 @@ export default function BookingPage({user}: { user: LoginResponse | null }) {
             selected={selected}
             date={date}
             timeSlot={timeSlot}
-            duration={duration}
+            endTime={endTime}
             purpose={purpose}
             user={user}
             bookingError={bookingError}
@@ -294,19 +339,23 @@ export default function BookingPage({user}: { user: LoginResponse | null }) {
             createdBooking={createdBooking}
             date={date}
             timeSlot={timeSlot}
-            duration={duration}
+            endTime={endTime}
             user={user}
+            onShowMyBookings={onGoHome}
             onBookAnother={() => {
+              const nextDate = initialBookingDate();
+              const nextStart = initialStartTime(nextDate);
+
               setStep("select");
               setSelected(null);
-              setDate("");
-              setDuration("");
-              setTimeSlot("");
+              setDate(nextDate);
+              setTimeSlot(nextStart);
+              setEndTime(nextStart ? defaultEndTime(nextStart) : "");
               setPurpose("");
             }}
           />
         )}
-      </div>
+      </main>
     </div>
   );
 }

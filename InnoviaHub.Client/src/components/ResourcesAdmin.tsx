@@ -1,8 +1,15 @@
-import { useEffect, useState } from "react";
+import {useEffect, useState} from "react";
 import Alert from "./Alert";
-import AdminStatusBadge from "./AdminStatusBadge";
-import { createResource, createResourceType, deleteResource, getAllResourceTypes, getAllResources,
-  updateResource, type Resource, type ResourceType, type ResourceZone, } from "../services/resourceService";
+import AdminDialog from "./Admin/AdminDialog";
+import {
+  dangerIconButtonClass, iconButtonClass, inputClass, labelClass,
+  primaryButtonClass, secondaryButtonClass, segmentClass,
+} from "./Admin/adminStyles";
+import {IconPencil, IconPlus, IconSearch, IconTrash, ResourceTypeIcon} from "./Icons";
+import {
+  createResource, createResourceType, deleteResource, getAllResourceTypes, getAllResources,
+  updateResource, type Resource, type ResourceType, type ResourceZone,
+} from "../services/resourceService";
 
 type ResourceForm = {
   name: string;
@@ -17,31 +24,29 @@ const emptyForm: ResourceForm = {
   zone: "",
   capacity: "",
 };
-const fieldStyle = {
-  width: "100%",
-  boxSizing: "border-box" as const,
-  background: "#111e2d",
-  border: "1px solid #1e3347",
-  borderRadius: 10,
-  padding: "10px 12px",
-  color: "#e2eaf2",
-  fontSize: 14,
-};
+
+function zoneLabel(zone: ResourceZone | null) {
+  return zone === null ? "Ingen zon" : `Zon ${String.fromCharCode(65 + zone)}`;
+}
+
+// Sorterar "Mötesrum 2" före "Mötesrum 10"
+function byName(a: Resource, b: Resource) {
+  return a.name.localeCompare(b.name, "sv", {numeric: true});
+}
 
 function ResourceModal({
-  form,
-  types,
-  editing,
-  alert,
-  newTypeName,
-  creatingType,
-  onNewTypeNameChange,
-  onAddResourceType,
-  onChange,
-  onSubmit,
-  onClose,
-  onClearAlert,
-}: {
+                         form,
+                         types,
+                         editing,
+                         alert,
+                         newTypeName,
+                         creatingType,
+                         onNewTypeNameChange,
+                         onAddResourceType,
+                         onChange,
+                         onSubmit,
+                         onClose,
+                       }: {
   form: ResourceForm;
   types: ResourceType[];
   editing: boolean;
@@ -51,192 +56,124 @@ function ResourceModal({
   onChange: (form: ResourceForm) => void;
   onSubmit: (event: React.FormEvent) => void;
   onClose: () => void;
-  onClearAlert: () => void;
   onNewTypeNameChange: (name: string) => void;
   onAddResourceType: () => void;
 }) {
+  const [showNewType, setShowNewType] = useState(false);
+
   return (
-    <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        background: "rgba(8,14,20,0.7)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        zIndex: 1000,
-      }}
-      onClick={onClose}
+    <AdminDialog
+      title={editing ? "Redigera resurs" : "Ny resurs"}
+      description={editing ? undefined : "Resursen blir bokningsbar direkt för alla medlemmar."}
+      onClose={onClose}
     >
-      <div
-        onClick={(event) => event.stopPropagation()}
-        style={{
-          width: "100%",
-          maxWidth: 420,
-          background: "#0d1824",
-          border: "1px solid #1e3347",
-          borderRadius: 16,
-          padding: 24,
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: 20,
-          }}
-        >
-          <h2
-            style={{
-              margin: 0,
-              color: "#e2eaf2",
-              fontFamily: "Outfit, sans-serif",
-              fontSize: 18,
-            }}
-          >
-            {editing ? "Redigera resurs" : "Lägg till resurs"}
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            style={{
-              background: "transparent",
-              border: "none",
-              color: "#7a94aa",
-              fontSize: 24,
-              cursor: "pointer",
-            }}
-          >
-            ×
-          </button>
+      <form onSubmit={onSubmit} className="grid gap-4">
+        <div>
+          <label htmlFor="resource-name" className={labelClass}>Namn</label>
+          <input
+            id="resource-name"
+            required
+            value={form.name}
+            onChange={(event) => onChange({...form, name: event.target.value})}
+            className={inputClass}
+            placeholder="T.ex. Mötesrum 3"
+          />
         </div>
-        <form onSubmit={onSubmit} style={{ display: "grid", gap: 16 }}>
-          <label style={{ color: "#7a94aa", fontSize: 14 }}>
-            Resursnamn
-            <input
-              required
-              value={form.name}
-              onChange={(event) =>
-                onChange({ ...form, name: event.target.value })
-              }
-              style={{ ...fieldStyle, display: "block", marginTop: 8 }}
-              placeholder="T.ex. Mötesrum"
-            />
-          </label>
-          <label style={{ color: "#7a94aa", fontSize: 14 }}>
-            Resurstyp
-            <select
-              required
-              value={form.resourceTypeId}
-              onChange={(event) =>
-                onChange({ ...form, resourceTypeId: event.target.value })
-              }
-              style={{ ...fieldStyle, display: "block", marginTop: 8 }}
-            >
-              <option value="">Välj resurstyp</option>
-              {types.map((type) => (
-                <option key={type.id} value={type.id}>
-                  {type.name}
-                </option>
-              ))}
-            </select>
-            
-            <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+
+        <div>
+          <label htmlFor="resource-type" className={labelClass}>Typ</label>
+          <select
+            id="resource-type"
+            required
+            value={form.resourceTypeId}
+            onChange={(event) => onChange({...form, resourceTypeId: event.target.value})}
+            className={inputClass}
+          >
+            <option value="">Välj typ</option>
+            {types.map((type) => (
+              <option key={type.id} value={type.id}>{type.name}</option>
+            ))}
+          </select>
+
+          {showNewType ? (
+            <div className="mt-2 flex gap-2">
               <input
+                aria-label="Namn på ny typ"
                 value={newTypeName}
                 onChange={(event) => onNewTypeNameChange(event.target.value)}
-                placeholder="T.ex. Sensor"
-                style={{ ...fieldStyle, marginTop: 0 }}
+                placeholder="T.ex. Projektor"
+                className={inputClass}
               />
-
-              <button type="button" onClick={onAddResourceType} disabled={creatingType}
-              style={{whiteSpace: "nowrap", background: "#111e2d", border: "1px solid #1e3347",
-                borderRadius: 10, padding: "0 12px", color:"#00d4aa", cursor: creatingType ? "wait" : "pointer",
-              }}>
-                {creatingType ? "Skapar..." : "+ Ny typ"}
+              <button
+                type="button"
+                onClick={onAddResourceType}
+                disabled={creatingType}
+                className={secondaryButtonClass + " shrink-0"}
+              >
+                {creatingType ? "Skapar…" : "Lägg till"}
               </button>
             </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setShowNewType(true)}
+              className="mt-2 inline-flex min-h-10 items-center gap-1.5 text-sm font-medium text-teal hover:underline cursor-pointer"
+            >
+              <IconPlus className="h-4 w-4"/>
+              Skapa ny typ
+            </button>
+          )}
+        </div>
 
-          </label>
-
-          <label style={{ color: "#7a94aa", fontSize: 14 }}>
-            Zon
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label htmlFor="resource-zone" className={labelClass}>Zon</label>
             <select
+              id="resource-zone"
               required
               value={form.zone}
               onChange={(event) =>
                 onChange({
                   ...form,
-                  zone:
-                    event.target.value === ""
-                      ? ""
-                      : (Number(event.target.value) as ResourceZone),
+                  zone: event.target.value === "" ? "" : (Number(event.target.value) as ResourceZone),
                 })
               }
-              style={{ ...fieldStyle, display: "block", marginTop: 8 }}
+              className={inputClass}
             >
               <option value="">Välj zon</option>
               <option value={0}>Zon A</option>
               <option value={1}>Zon B</option>
               <option value={2}>Zon C</option>
             </select>
-          </label>
-
-          <label style={{ color: "#7a94aa", fontSize: 14 }}>
-            Kapacitet
+          </div>
+          <div>
+            <label htmlFor="resource-capacity" className={labelClass}>Platser</label>
             <input
+              id="resource-capacity"
               required
               type="number"
               min="1"
-              placeholder="T.ex. 15" 
+              placeholder="T.ex. 8"
               value={form.capacity}
               onChange={(event) =>
-                onChange({
-                  ...form,
-                  capacity:
-                    event.target.value === "" ? "" : Number(event.target.value),
-                })
+                onChange({...form, capacity: event.target.value === "" ? "" : Number(event.target.value)})
               }
-              style={{ ...fieldStyle, display: "block", marginTop: 8 }}
+              className={inputClass}
             />
-          </label>
-          {alert && (
-            <Alert message={alert} type="error" onClose={onClearAlert} />
-          )}
-          <div style={{ display: "flex", justifyContent: "flex-end", gap: 12 }}>
-            <button
-              type="button"
-              onClick={onClose}
-              style={{
-                background: "transparent",
-                border: "1px solid #1e3347",
-                color: "#7a94aa",
-                borderRadius: 10,
-                padding: "10px 14px",
-                cursor: "pointer",
-              }}
-            >
-              Avbryt
-            </button>
-            <button
-              type="submit"
-              style={{
-                background: "#00d4aa",
-                border: "none",
-                color: "#080e14",
-                borderRadius: 10,
-                padding: "10px 16px",
-                fontWeight: 700,
-                cursor: "pointer",
-              }}
-            >
-              {editing ? "Uppdatera resurs" : "Spara resurs"}
-            </button>
           </div>
-        </form>
-      </div>
-    </div>
+        </div>
+
+        {alert && <p role="alert"
+                     className="rounded-xl border border-rose/30 bg-rose/10 px-3.5 py-2.5 text-sm text-rose">{alert}</p>}
+
+        <div className="mt-2 flex justify-end gap-3">
+          <button type="button" onClick={onClose} className={secondaryButtonClass}>Avbryt</button>
+          <button type="submit" className={primaryButtonClass}>
+            {editing ? "Spara ändringar" : "Skapa resurs"}
+          </button>
+        </div>
+      </form>
+    </AdminDialog>
   );
 }
 
@@ -250,6 +187,8 @@ export default function ResourcesAdmin() {
   const [alert, setAlert] = useState("");
   const [newTypeName, setNewTypeName] = useState("");
   const [creatingType, setCreatingType] = useState(false);
+  const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState("all");
 
   useEffect(() => {
     Promise.all([getAllResources(), getAllResourceTypes()])
@@ -281,6 +220,18 @@ export default function ResourcesAdmin() {
     }
   }
 
+  const openEditForm = (resource: Resource) => {
+    setEditing(resource);
+    setForm({
+      name: resource.name,
+      resourceTypeId: resource.resourceType.id,
+      zone: resource.zone ?? "",
+      capacity: resource.capacity,
+    });
+    setAlert("");
+    setFormOpen(true);
+  };
+
   const addResourceType = async () => {
     const name = newTypeName.trim();
 
@@ -292,13 +243,8 @@ export default function ResourcesAdmin() {
     try {
       setCreatingType(true);
       const createdType = await createResourceType(name, "");
-       setTypes((current) => [...current, createdType]);
-
-        setForm((current) => ({
-      ...current,
-      resourceTypeId: createdType.id,
-   }));
-
+      setTypes((current) => [...current, createdType]);
+      setForm((current) => ({...current, resourceTypeId: createdType.id}));
       setNewTypeName("");
       setAlert("");
     } catch {
@@ -332,19 +278,11 @@ export default function ResourcesAdmin() {
           ...resourceData,
           isActive: editing.isActive,
         });
-        const resourceType = types.find(
-          (type) => type.id === form.resourceTypeId,
-        );
+        const resourceType = types.find((type) => type.id === form.resourceTypeId);
         if (resourceType)
           setResources((current) =>
             current.map((resource) =>
-              resource.id === editing.id
-                ? {
-                    ...resource,
-                    ...resourceData,
-                    resourceType,
-                  }
-                : resource,
+              resource.id === editing.id ? {...resource, ...resourceData, resourceType} : resource,
             ),
           );
       } else {
@@ -353,9 +291,7 @@ export default function ResourcesAdmin() {
       }
       closeForm();
     } catch {
-      setAlert(
-        editing ? "Kunde inte uppdatera resurs" : "Kunde inte skapa resurs",
-      );
+      setAlert(editing ? "Kunde inte uppdatera resurs" : "Kunde inte skapa resurs");
     }
   };
 
@@ -363,9 +299,7 @@ export default function ResourcesAdmin() {
     if (!deleting) return;
     try {
       await deleteResource(deleting.id);
-      setResources((current) =>
-        current.filter((resource) => resource.id !== deleting.id),
-      );
+      setResources((current) => current.filter((resource) => resource.id !== deleting.id));
     } catch {
       setAlert("Kunde inte ta bort resurs");
     } finally {
@@ -373,121 +307,127 @@ export default function ResourcesAdmin() {
     }
   };
 
+  // Filtrera på sök och typ, gruppera sedan per typ
+  const query = search.trim().toLowerCase();
+  const visibleResources = resources.filter((resource) =>
+    (typeFilter === "all" || resource.resourceType.id === typeFilter) &&
+    (!query || resource.name.toLowerCase().includes(query))
+  );
+  const groups = types
+    .map((type) => ({
+      type,
+      items: visibleResources.filter((resource) => resource.resourceType.id === type.id).sort(byName),
+    }))
+    .filter((group) => group.items.length > 0);
+  const totalSeats = resources.reduce((sum, resource) => sum + resource.capacity, 0);
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1
-          className="text-2xl font-bold"
-          style={{ fontFamily: "Outfit, sans-serif", color: "#e2eaf2" }}
-        >
-          Resurser
-        </h1>
-        <button
-          onClick={openResourceForm}
-          className="px-4 py-2 rounded-lg text-sm font-semibold"
-          style={{ background: "#00d4aa", color: "#080e14", cursor: "pointer"}}
-        >
-          + Ny resurs
+    <div className="mx-auto max-w-4xl space-y-6 pb-24">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="font-display text-2xl font-bold text-text">Resurser</h1>
+          <p className="mt-1 text-sm text-muted">
+            {resources.length} resurser · {types.length} typer · {totalSeats} platser totalt
+          </p>
+        </div>
+        <button type="button" onClick={openResourceForm} className={primaryButtonClass}>
+          <IconPlus className="h-4 w-4"/>
+          Ny resurs
         </button>
       </div>
-      <div
-        className="rounded-xl overflow-hidden"
-        style={{ border: "1px solid #1e3347" }}
-      >
-        <table className="w-full">
-          <thead>
-            <tr style={{ background: "#111e2d" }}>
-              {["Resurs", "Typ", "Zon", "Status", "Kapacitet", "Åtgärd"].map(
-                (heading) => (
-                  <th
-                    key={heading}
-                    className="px-4 py-3 text-left text-xs"
-                    style={{ color: "#7a94aa" }}
-                  >
-                    {heading}
-                  </th>
-                ),
-              )}
-            </tr>
-          </thead>
-          <tbody>
-            {resources.map((resource, index) => (
-              <tr
-                key={resource.id}
-                style={{
-                  borderBottom: "1px solid #1e3347",
-                  background: index % 2 ? "#0a1520" : "transparent",
-                }}
-              >
-                <td className="px-4 py-3 text-sm" style={{ color: "#e2eaf2" }}>
-                  {resource.name}
-                </td>
-                <td className="px-4 py-3 text-sm" style={{ color: "#7a94aa" }}>
-                  {resource.resourceType.name}
-                </td>
-                <td className="px-4 py-3 text-sm" style={{ color: "#7a94aa" }}>
-                  {resource.zone === null
-                    ? "Ingen zon"
-                    : `Zon ${String.fromCharCode(65 + resource.zone)}`}
-                </td>
-                <td className="px-4 py-3">
-                  <AdminStatusBadge
-                    status={resource.isActive ? "active" : "inactive"}
-                  />
-                </td>
-                <td
-                  className="px-4 py-3 text-sm mono"
-                  style={{ color: "#7a94aa" }}
-                >
-                  {resource.capacity}
-                </td>
-                <td className="px-4 py-3">
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => {
-                        setEditing(resource);
-                        setForm({
-                          name: resource.name,
-                          resourceTypeId: resource.resourceType.id,
-                          zone: resource.zone ?? "",
-                          capacity: resource.capacity,
-                        });
-                        setFormOpen(true);
-                      }}
-                      className="text-xs px-3 py-2 rounded-lg"
-                      style={{
-                        background: "#111e2d",
-                        color: "#7a94aa",
-                        border: "1px solid #1e3347",
-                        cursor: "pointer"
-                      }}
-                    >
-                      Redigera
-                    </button>
-                    <button
-                      onClick={() => setDeleting(resource)}
-                      className="text-xs px-3 py-2 rounded-lg"
-                      style={{
-                        background: "rgba(244,63,94,0.1)",
-                        color: "#f43f5e",
-                        border: "1px solid rgba(244,63,94,0.25)",
-                        cursor: "pointer"
-                      }}
-                    >
-                      Ta bort
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {alert && !formOpen && (
-          <div className="p-4">
-            <Alert message={alert} type="error" onClose={() => setAlert("")} />
-          </div>
-        )}
+
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="relative flex-1">
+          <IconSearch className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted"/>
+          <input
+            type="search"
+            aria-label="Sök resurs"
+            placeholder="Sök resurs…"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            className={inputClass + " pl-10"}
+          />
+        </div>
+        <div role="group" aria-label="Filtrera på typ"
+             className="flex flex-wrap gap-1 rounded-xl border border-border bg-surface p-1">
+          <button type="button" aria-pressed={typeFilter === "all"} onClick={() => setTypeFilter("all")}
+                  className={segmentClass(typeFilter === "all")}>
+            Alla
+          </button>
+          {types.map((type) => (
+            <button
+              key={type.id}
+              type="button"
+              aria-pressed={typeFilter === type.id}
+              onClick={() => setTypeFilter(type.id)}
+              className={segmentClass(typeFilter === type.id)}
+            >
+              {type.name}
+            </button>
+          ))}
+        </div>
       </div>
+
+      {alert && !formOpen && <Alert message={alert} type="error" onClose={() => setAlert("")}/>}
+
+      {groups.length === 0 && (
+        <div className="rounded-2xl border border-dashed border-border px-6 py-12 text-center">
+          <p className="text-sm text-muted">
+            {resources.length === 0 ? "Inga resurser ännu. Skapa den första." : "Inga resurser matchar sökningen."}
+          </p>
+        </div>
+      )}
+
+      {groups.map(({type, items}) => (
+        <section key={type.id} aria-labelledby={`type-${type.id}`}>
+          <div className="mb-2 flex items-center gap-2.5 px-1">
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal/10 text-teal">
+              <ResourceTypeIcon name={type.name} className="h-4 w-4"/>
+            </span>
+            <h2 id={`type-${type.id}`} className="font-display font-semibold text-text">{type.name}</h2>
+            <span className="mono text-xs text-muted">{items.length}</span>
+          </div>
+
+          <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-surface">
+            {items.map((resource) => (
+              <li key={resource.id} className="flex items-center gap-4 px-4 py-3 transition-colors hover:bg-panel/60">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="truncate font-medium text-text">{resource.name}</span>
+                    {!resource.isActive && (
+                      <span className="rounded-full border border-border px-2 py-0.5 text-xs text-muted">Inaktiv</span>
+                    )}
+                  </div>
+                  <p className="mt-0.5 text-sm text-muted">
+                    {zoneLabel(resource.zone)} · {resource.capacity} {resource.capacity === 1 ? "plats" : "platser"}
+                  </p>
+                </div>
+                <div className="flex shrink-0 gap-1">
+                  <button
+                    type="button"
+                    onClick={() => openEditForm(resource)}
+                    aria-label={`Redigera ${resource.name}`}
+                    title="Redigera"
+                    className={iconButtonClass}
+                  >
+                    <IconPencil className="h-4 w-4"/>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDeleting(resource)}
+                    aria-label={`Ta bort ${resource.name}`}
+                    title="Ta bort"
+                    className={dangerIconButtonClass}
+                  >
+                    <IconTrash className="h-4 w-4"/>
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))}
+
       {formOpen && (
         <ResourceModal
           form={form}
@@ -501,7 +441,6 @@ export default function ResourcesAdmin() {
           onChange={setForm}
           onSubmit={submit}
           onClose={closeForm}
-          onClearAlert={() => setAlert("")}
         />
       )}
       {deleting && (

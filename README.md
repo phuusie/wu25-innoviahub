@@ -30,7 +30,8 @@ docker compose up -d
 
 ### 2. Konfigurera API:t
 
-API:t använder PostgreSQL på port `5433` och kräver en connection string. Sätt variablerna i samma terminalfönster som API:t ska startas i:
+API:t använder PostgreSQL på port `5433` och kräver en connection string. Sätt variablerna i samma terminalfönster som
+API:t ska startas i:
 
 Ersätt `<database_name>`, `<username>` och `<password>` med dina värden från .env-filen i connection stringen.
 `ADMIN_EMAIL` och `ADMIN_PASSWORD` är valfria och används för att skapa den första administratören.
@@ -54,7 +55,7 @@ $env:OPENAI_API_KEY = '<din-openai-nyckel>'
 > - ett specialtecken (t.ex. `!` eller `#`)
 >
 > Exempel: `Exempel1234!`
-> 
+>
 > **Tips:** använd enkla citattecken (`'...'`) runt lösenord i PowerShell,
 > så tolkas inte `$` som en variabel.
 
@@ -114,7 +115,8 @@ Eller så kan ni använda er av Scalar/OpenAPI som finns på `http://localhost:5
 
 ## AI-bokningsassistent
 
-En AI-assistent som hjälper kunden med att hitta lediga tider och föreslå bokningar utan att behöva gå in på bokningssidan.
+En AI-assistent som hjälper kunden med att hitta lediga tider och föreslå bokningar utan att behöva gå in på
+bokningssidan.
 
 ### Så fungerar det
 
@@ -131,28 +133,28 @@ och den går igenom samma kontroller som en vanlig bokning.
 
 ### Var koden finns
 
-| Backend | Vad den gör |
-|---|---|
-| `Services/AssistantService.cs` | Pratar med OpenAI och kör verktygen |
-| `Services/AvailabilityService.cs` | Räknar ut lediga tider |
-| `Services/BookingService.cs` | Alla regler för bokningar |
+| Backend                              | Vad den gör                         |
+|--------------------------------------|-------------------------------------|
+| `Services/AssistantService.cs`       | Pratar med OpenAI och kör verktygen |
+| `Services/AvailabilityService.cs`    | Räknar ut lediga tider              |
+| `Services/BookingService.cs`         | Alla regler för bokningar           |
 | `Controllers/AssistantController.cs` | Endpoints för chatt och bekräftelse |
 
-| Frontend | Vad den gör |
-|---|---|
-| `components/Chat/ChatWidget.tsx` | Chattbubblan och chatten |
-| `components/Chat/ProposalCard.tsx` | Förslaget med knapparna |
-| `services/assistantService.ts` | Anrop till API:t |
+| Frontend                           | Vad den gör              |
+|------------------------------------|--------------------------|
+| `components/Chat/ChatWidget.tsx`   | Chattbubblan och chatten |
+| `components/Chat/ProposalCard.tsx` | Förslaget med knapparna  |
+| `services/assistantService.ts`     | Anrop till API:t         |
 
 ### Nya endpoints
 
 Alla kräver inloggning.
 
-| Metod | Endpoint | Beskrivning |
-|---|---|---|
-| `POST` | `/api/Assistant/chat` | Skickar konversationen och får svar + eventuellt förslag |
-| `POST` | `/api/Assistant/confirm/{proposalId}` | Bekräftar ett förslag och skapar bokningen |
-| `GET` | `/api/Availability?date=YYYY-MM-DD&minCapacity=&resourceTypeId=` | Lediga tider per resurs en viss dag |
+| Metod  | Endpoint                                                         | Beskrivning                                              |
+|--------|------------------------------------------------------------------|----------------------------------------------------------|
+| `POST` | `/api/Assistant/chat`                                            | Skickar konversationen och får svar + eventuellt förslag |
+| `POST` | `/api/Assistant/confirm/{proposalId}`                            | Bekräftar ett förslag och skapar bokningen               |
+| `GET`  | `/api/Availability?date=YYYY-MM-DD&minCapacity=&resourceTypeId=` | Lediga tider per resurs en viss dag                      |
 
 ### Säkerhet
 

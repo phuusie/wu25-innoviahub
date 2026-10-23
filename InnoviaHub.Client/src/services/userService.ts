@@ -1,82 +1,85 @@
-import { BASE_API_URL } from "../config/api.ts";
+import {BASE_API_URL} from "../config/api.ts";
 
 export type UserApiModel = {
-    id: string,
-    email: string;
-    firstName: string;
-    lastName: string;
-    isAdmin: boolean;
+  id: string,
+  email: string;
+  firstName: string;
+  lastName: string;
+  isAdmin: boolean;
 };
 
 export type UserSummary = {
-    id: string;
-    firstname: string;
-    lastname: string; 
-    isAdmin: boolean;
+  id: string;
+  firstname: string;
+  lastname: string;
+  email: string;
+  isAdmin: boolean;
 }
 
 export type CreateUserRequest = {
-    email: string;
-    password: string;
-    firstName: string;
-    lastName: string;
+  email: string;
+  password: string;
+  firstName: string;
+  lastName: string;
 };
 
 const API_URL = `${BASE_API_URL}/api/Users`;
 
 //Hämta alla users
 export async function getAllUsers(): Promise<UserSummary[]> {
-    const response = await fetch(API_URL, {
-        method: "GET",
-        credentials: "include"
-    }); 
+  const response = await fetch(API_URL, {
+    method: "GET",
+    credentials: "include"
+  });
 
-    if (!response.ok) {
-        throw new Error("Kunde inte hämta användare");
-    }
+  if (!response.ok) {
+    throw new Error("Kunde inte hämta användare");
+  }
 
-    const users: UserApiModel[] = await response.json();
+  const users: UserApiModel[] = await response.json();
 
-    return users.map((user) => ({
-        id: user.id,
-        firstname: user.firstName,
-        lastname: user.lastName,
-        isAdmin: user.isAdmin
-    }));
+  return users.map((user) => ({
+    id: user.id,
+    firstname: user.firstName,
+    lastname: user.lastName,
+    email: user.email,
+    isAdmin: user.isAdmin
+  }));
 }
 
 //Lägg till user/medlem
-export async function createUser(user: CreateUserRequest): Promise<UserSummary>{
-    const response = await fetch(API_URL, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify(user),
-    });
-    if (!response.ok) {
-        const errorMessage = await response.text();
-        throw new Error(errorMessage || `Kunde inte skapa medlem (${response.status})`);
-    }
-    const createdUser: UserApiModel = await response.json();
+export async function createUser(user: CreateUserRequest): Promise<UserSummary> {
+  const response = await fetch(API_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    credentials: "include",
+    body: JSON.stringify(user),
+  });
+  if (!response.ok) {
+    const errorMessage = await response.text();
+    throw new Error(errorMessage || `Kunde inte skapa medlem (${response.status})`);
+  }
+  const createdUser: UserApiModel = await response.json();
 
-    return {
-        id: createdUser.id,
-        firstname: createdUser.firstName,
-        lastname: createdUser.lastName,
-        isAdmin: createdUser.isAdmin,
-    }
+  return {
+    id: createdUser.id,
+    firstname: createdUser.firstName,
+    lastname: createdUser.lastName,
+    email: createdUser.email,
+    isAdmin: createdUser.isAdmin,
+  }
 }
 
 //Ta bort users i medlemslistan
 export async function deleteUser(id: string): Promise<void> {
-    const response = await fetch(`${API_URL}/${id}`, {
-        method: "DELETE",
-        credentials: "include",
-    });
+  const response = await fetch(`${API_URL}/${id}`, {
+    method: "DELETE",
+    credentials: "include",
+  });
 
-    if (!response.ok) {
-        throw new Error("Kunde inte ta bort medlem")
-    }
+  if (!response.ok) {
+    throw new Error("Kunde inte ta bort medlem")
+  }
 }
