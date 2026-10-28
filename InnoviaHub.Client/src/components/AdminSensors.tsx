@@ -48,9 +48,20 @@ export default function AdminSensors() {
         </h1>
         <span className="text-xs mono" style={{color: "#7a94aa"}}>Realtid · 5s uppdatering</span>
       </div>
-      {error && <p className="text-sm" style={{color: "#f43f5e"}}>{error}</p>}
-      <div className="grid md:grid-cols-2 gap-4">
-        {devices.map((sensor) => {
+
+      {error ? (
+        <div className="rounded-xl p-6 text-center"
+             style={{background: "#0d1824", border: "1px solid #1e3347"}}>
+          <div className="text-sm font-semibold" style={{color: "#e2eaf2"}}>
+            Sensorerna är offline just nu
+          </div>
+          <div className="text-xs mt-1" style={{color: "#7a94aa"}}>
+            IoT-tjänsten svarar inte. Försök igen senare.
+          </div>
+        </div>
+      ) : (
+        <div className="grid md:grid-cols-2 gap-4">
+          {devices.map((sensor) => {
             const reading = readings[sensor.id];
             return (
               <div key={sensor.id} className="rounded-xl p-4"
@@ -62,28 +73,27 @@ export default function AdminSensors() {
                       🌡
                     </div>
                     <div>
-                      <div className="text-sm font-semibold"
-                           style={{color: "#e2eaf2"}}>{sensor.serial}</div>
+                      <div className="text-sm font-semibold" style={{color: "#e2eaf2"}}>{sensor.serial}</div>
                       <div className="text-xs" style={{color: "#7a94aa"}}>{sensor.model}</div>
                     </div>
                   </div>
                   <AdminStatusBadge status={sensor.status}/>
                 </div>
                 <div className="mt-3 flex items-center justify-between">
-                <span className="mono text-xl" style={{color: "#00d4aa"}}>
-                  {reading
-                    ? `${reading.temperature?.toFixed(1) ?? "–"}°C · ${reading.co2 ?? "–"} ppm`
-                    : "–"}
-                </span>
+                  <span className="mono text-xl" style={{color: "#00d4aa"}}>
+                    {reading
+                      ? `${reading.temperature?.toFixed(1) ?? "–"}°C · ${reading.co2 ?? "–"} ppm`
+                      : "–"}
+                  </span>
                   <span className="text-xs" style={{color: "#7a94aa"}}>
-                  {reading ? "Live" : "Väntar på data"}
-                </span>
+                    {reading ? "Live" : "Väntar på data"}
+                  </span>
                 </div>
               </div>
-            )
-          }
-        )}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
