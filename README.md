@@ -130,8 +130,6 @@ API-nyckeln finns bara i backend, AI:n kan bara *föreslå*, och varje användar
 
 HTTP-filer finns i `InnoviaHub.Api/Http`. I utvecklingsläge finns Scalar på `http://localhost:5193/scalar`.
 
-## IoT-integrationen i korthet
-
 ## Funktioner jag har vidareutvecklat
 
 - **Lediga tider och öppettider:** API som räknar ut lediga tider per resurs, och bokningsregler som följer konfigurerbara öppettider.
