@@ -116,6 +116,14 @@ Klienten körs på `http://localhost:5173`.
 För live-sensordata startar du Innovia IoT lokalt. Se `https://github.com/phuusie/wu25-innovia-iot.git`.
 Utan IoT fungerar allt annat, och sensorfliken visar att enheterna är offline.
 
+## IoT-integrationen i korthet
+
+1. API:t hämtar enheterna från IoT:s DeviceRegistry via `GET /api/Iot/devices` (endast admin).
+2. Frontenden ansluter direkt till IoT:s SignalR-hub (`VITE_IOT_HUB_URL`) och tar emot temperatur och CO₂ live.
+3. Svarar inte IoT-tjänsten visar sensorfliken *"Sensorerna är offline just nu"*. Resten av appen påverkas inte.
+
+I den driftsatta versionen körs inte IoT-servern, så sensorfliken visar alltid offline-läget.
+
 ## AI-assistenten i korthet
 
 1. Kunden skriver i chatten. Konversationen skickas till `POST /api/Assistant/chat`.
