@@ -5,7 +5,6 @@ import {IconDashboard, IconGrid, IconThermometer, IconUsers} from "./Icons";
 type AdminNavigationProps = {
   tab: AdminTab;
   onTabChange: (tab: AdminTab) => void;
-  alertCount: number;
   mobile?: boolean;
 };
 
@@ -19,7 +18,6 @@ const tabIcons: Record<AdminTab, ReactNode> = {
 export default function AdminNavigation({
                                           tab,
                                           onTabChange,
-                                          alertCount,
                                           mobile = false,
                                         }: AdminNavigationProps) {
   return (
@@ -43,12 +41,6 @@ export default function AdminNavigation({
           >
             {tabIcons[item.id]}
             {item.label}
-            {item.id === "sensors" && alertCount > 0 && (
-              <span
-                className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-rose px-1 text-xs font-bold text-white">
-                {alertCount}
-              </span>
-            )}
           </button>
         );
       })}

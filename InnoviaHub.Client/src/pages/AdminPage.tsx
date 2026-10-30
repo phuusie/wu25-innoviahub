@@ -7,9 +7,10 @@ import AdminNavigation from "../components/AdminNavigation";
 import AdminSensors from "../components/AdminSensors";
 import MembersAdmin from "../components/MembersAdmin";
 import ResourcesAdmin from "../components/ResourcesAdmin";
-import {sensors, type AdminTab} from "../components/adminData";
+import {type AdminTab} from "../components/adminData";
 import {deleteBooking, getAllBookings, type Booking} from "../services/bookingApiService";
 import {getAllResources, type Resource} from "../services/resourceService";
+import {getDevices} from "../services/iotService";
 
 export default function AdminPage({onBack, user}: { onBack: () => void; user: LoginResponse }) {
   const [tab, setTab] = useState<AdminTab>("dashboard");
@@ -17,7 +18,6 @@ export default function AdminPage({onBack, user}: { onBack: () => void; user: Lo
   const [bookingError, setBookingError] = useState<string | null>(null);
   const [bookingToDelete, setBookingToDelete] = useState<string | null>(null);
   const [resources, setResources] = useState<Resource[]>([]);
-  const alertCount = sensors.filter((sensor) => sensor.status !== "ok").length;
 
   useEffect(() => {
     async function loadBookings() {
@@ -77,19 +77,18 @@ export default function AdminPage({onBack, user}: { onBack: () => void; user: Lo
           onConfirm={confirmDeleteBooking}
         />
       )}
-      <AdminHeader onBack={onBack} user={user} alertCount={alertCount}/>
+      <AdminHeader onBack={onBack} user={user}/>
       <div className="flex flex-1">
         <aside className="hidden w-52 shrink-0 flex-col border-r border-border px-3 pt-6 md:flex">
-          <AdminNavigation tab={tab} onTabChange={setTab} alertCount={alertCount}/>
+          <AdminNavigation tab={tab} onTabChange={setTab}/>
           <SystemStatus/>
         </aside>
         <main className="flex-1 p-6 overflow-auto">
           <div className="flex gap-2 mb-6 md:hidden flex-wrap">
-            <AdminNavigation tab={tab} onTabChange={setTab} alertCount={alertCount} mobile/>
+            <AdminNavigation tab={tab} onTabChange={setTab} mobile/>
           </div>
           {tab === "dashboard" && (
             <AdminDashboard
-              alerts={alertCount}
               recentBookings={upcomingBookings}
               bookingError={bookingError}
               onDeleteBooking={setBookingToDelete}
@@ -108,7 +107,7 @@ export default function AdminPage({onBack, user}: { onBack: () => void; user: Lo
   );
 }
 
-function AdminHeader({onBack, user, alertCount}: { onBack: () => void; user: LoginResponse; alertCount: number }) {
+function AdminHeader({onBack, user}: { onBack: () => void; user: LoginResponse }) {
   return (
     <header
       className="sticky top-0 z-40 flex items-center justify-between gap-3 border-b border-border bg-bg/95 px-4 py-3 backdrop-blur-lg sm:px-6 sm:py-4">
@@ -135,15 +134,6 @@ function AdminHeader({onBack, user, alertCount}: { onBack: () => void; user: Log
         </div>
       </div>
       <div className="flex items-center gap-3">
-        {alertCount > 0 && (
-          <div
-            className="flex items-center gap-2 whitespace-nowrap rounded-full border border-rose/30 bg-rose/10 px-3 py-1.5">
-            <span aria-hidden="true" className="pulse-dot h-2 w-2 rounded-full bg-rose"/>
-            <span className="mono text-xs text-rose">
-              {alertCount === 1 ? "1 aktivt larm" : `${alertCount} aktiva larm`}
-            </span>
-          </div>
-        )}
         <UserAvatar user={user}/>
         <span className="hidden text-sm text-text md:block">{user.firstName} {user.lastName}</span>
       </div>
@@ -152,13 +142,26 @@ function AdminHeader({onBack, user, alertCount}: { onBack: () => void; user: Log
 }
 
 function SystemStatus() {
+  const [iotOnline, setIotOnline] = useState<boolean | null>(null);
+
+  // Kollar om IoT-tjänsten svarar
+  useEffect(() => {
+    getDevices()
+      .then(() => setIotOnline(true))
+      .catch(() => setIotOnline(false));
+  }, []);
+
+  if (iotOnline === null) return null;
+
   return (
     <div className="mt-auto pb-6 px-3">
       <div className="rounded-xl border border-border bg-panel p-3">
         <div className="mono mb-1 text-xs text-muted">Systemstatus</div>
         <div className="flex items-center gap-2">
-          <span aria-hidden="true" className="pulse-dot h-2 w-2 rounded-full bg-teal"/>
-          <span className="text-xs text-teal">Alla system online</span>
+          <span aria-hidden="true" className={`pulse-dot h-2 w-2 rounded-full ${iotOnline ? "bg-teal" : "bg-rose"}`}/>
+          <span className={`text-xs ${iotOnline ? "text-teal" : "text-rose"}`}>
+            {iotOnline ? "IoT-sensorer online" : "IoT-sensorer offline"}
+          </span>
         </div>
       </div>
     </div>

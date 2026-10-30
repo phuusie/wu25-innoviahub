@@ -42,7 +42,6 @@ function greeting(date: Date) {
   return "God kväll";
 }
 
-// "tors 22 okt." → "Tors 22 okt." (CSS capitalize skulle ge stor bokstav på varje ord)
 function formatDay(date: Date) {
   const text = date.toLocaleDateString("sv-SE", {weekday: "short", day: "numeric", month: "short"});
   return text.charAt(0).toUpperCase() + text.slice(1);
@@ -74,6 +73,7 @@ export default function LandingPage({onBook, user}: LandingPageProps) {
     () => ({...latestReadings})
   );
   const [question, setQuestion] = useState("");
+  const [iotOffline, setIotOffline] = useState(false);
 
   useEffect(() => {
     async function loadOverview() {
@@ -133,7 +133,6 @@ export default function LandingPage({onBook, user}: LandingPageProps) {
     loadOverview().catch(console.error);
   }, [dataVersion, user?.isAdmin, user?.userId]);
 
-  // Ladda om när någon bokar, och var 30:e sekund så att "just nu" stämmer
   useEffect(() => {
     function handleBookingCreated() {
       setDataVersion((version) => version + 1);
@@ -152,7 +151,6 @@ export default function LandingPage({onBook, user}: LandingPageProps) {
     };
   }, []);
 
-  // Live-mätvärden från IoT-sensorerna
   useEffect(() => {
     function handleMeasurement(measurement: Measurement) {
       setReadings((previous) => ({
@@ -165,9 +163,7 @@ export default function LandingPage({onBook, user}: LandingPageProps) {
     }
 
     telemetryConnection.on("measurementReceived", handleMeasurement);
-    startTelemetryConnection().catch(() => {
-      // Utan sensorer visar sidan bara att data saknas
-    });
+    startTelemetryConnection().catch(() => setIotOffline(true));
 
     return () => {
       telemetryConnection.off("measurementReceived", handleMeasurement);
@@ -199,7 +195,6 @@ export default function LandingPage({onBook, user}: LandingPageProps) {
       <AppHeader user={user}/>
 
       <main className="mx-auto max-w-6xl px-6 pb-36">
-        {/* Fråga assistenten + nästa bokning */}
         <section className="grid gap-5 pt-10 lg:grid-cols-[1.6fr_1fr] lg:pt-14">
           <div className="relative overflow-hidden rounded-2xl border border-border bg-surface p-6 md:p-8">
             <div
@@ -313,7 +308,6 @@ export default function LandingPage({onBook, user}: LandingPageProps) {
           </aside>
         </section>
 
-        {/* Läget i huset just nu */}
         <section aria-labelledby="now-heading" className="mt-12">
           <div className="mb-4 flex items-baseline justify-between gap-4">
             <h2 id="now-heading" className="font-display text-xl font-bold text-text">
@@ -339,7 +333,9 @@ export default function LandingPage({onBook, user}: LandingPageProps) {
                   {averageTemperature === null ? "–" : `${averageTemperature.toFixed(1)}°`}
                 </dd>
                 {averageTemperature === null && (
-                  <dd className="mt-1 text-xs text-muted">Väntar på sensordata</dd>
+                  <dd className="mt-1 text-xs text-muted">
+                    {iotOffline ? "Sensorerna är offline" : "Väntar på sensordata"}
+                  </dd>
                 )}
               </div>
               {user?.isAdmin && (
@@ -389,7 +385,6 @@ export default function LandingPage({onBook, user}: LandingPageProps) {
           </div>
         </section>
 
-        {/* Fler bokningar */}
         {laterBookings.length > 0 && (
           <section aria-labelledby="later-heading" className="mt-12">
             <h2 id="later-heading" className="mb-4 font-display text-xl font-bold text-text">

@@ -2,7 +2,6 @@ import Alert from "./Alert";
 import type {Booking} from "../services/bookingApiService";
 
 type AdminDashboardProps = {
-  alerts: number;
   recentBookings: Booking[];
   bookingError: string | null;
   onDeleteBooking: (id: string) => void;
@@ -22,7 +21,6 @@ function formatTime(iso: string) {
 }
 
 export default function AdminDashboard({
-                                         alerts,
                                          recentBookings,
                                          bookingError,
                                          onDeleteBooking,
@@ -34,12 +32,6 @@ export default function AdminDashboard({
   const kpis = [
     {label: "Beläggning", value: `${occupancyPercentage}%`, sub: "av alla resurser just nu", warn: false},
     {label: "Pågår nu", value: String(activeBookingCount), sub: "bokningar", warn: false},
-    {
-      label: "Larm",
-      value: String(alerts),
-      sub: alerts === 1 ? "sensor kräver åtgärd" : "sensorer kräver åtgärd",
-      warn: alerts > 0
-    },
     {label: "Nya idag", value: String(newBookingCount), sub: "skapade bokningar", warn: false},
   ];
 
@@ -47,7 +39,7 @@ export default function AdminDashboard({
     <div className="space-y-6">
       <h1 className="font-display text-2xl font-bold text-text">Översikt</h1>
 
-      <dl className="grid grid-cols-2 gap-3 md:grid-cols-4">
+      <dl className="grid grid-cols-2 gap-3 md:grid-cols-3">
         {kpis.map((kpi) => (
           <div key={kpi.label} className="rounded-xl border border-border bg-surface p-5">
             <dt className="text-sm font-medium text-muted">{kpi.label}</dt>
