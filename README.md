@@ -1,164 +1,141 @@
 # Innovia Hub
 
-## Förutsättningar
+Innovia Hub är en bokningsplattform för ett coworking-space. Medlemmar kan boka skrivbord,
+mötesrum och andra resurser, få hjälp av en AI-assistent att hitta lediga tider och se
+bokningar uppdateras i realtid. Administratörer hanterar resurser och medlemmar och kan se
+sensordata (temperatur och CO₂) från lokalens IoT-enheter.
+
+## Live-demo
+
+**Länk:** https://innoviahub-api-dkun8.ondigitalocean.app
+
+- Inloggningsuppgifter för admin skickas som kommentar vid inlämning.
+
+### Så testar du
+
+1. **Bokning:** logga in som medlem → *Boka* → välj resurs, datum och tid.
+2. **Realtid (SignalR):** öppna appen i två fönster och gör en bokning i det ena. Tiden blir upptagen i det andra direkt.
+3. **AI-assistent:** öppna chattbubblan och skriv t.ex. *"Finns det ett mötesrum för 4 personer i morgon eftermiddag?"*. Assistenten föreslår en tid som du bekräftar med **Ja, boka**.
+4. **Admin:** logga in som admin → *Adminpanel* → hantera resurser och medlemmar.
+5. **IoT:** *Adminpanel → Sensorer*. IoT-servern är inte driftsatt, så sidan visar att sensorerna är **offline**, utan att resten av appen påverkas.
+
+## Funktioner jag har vidareutvecklat
+
+Efter gruppfasen har jag själv byggt:
+
+- **AI-bokningsassistent:** chatt som använder OpenAI med *function calling* för att söka lediga tider och föreslå bokningar.
+- **Tillgänglighets-API:** räknar ut lediga tider per resurs och dag (`/api/Availability`).
+- **IoT-integration:** adminpanelens sensorflik hämtar riktiga enheter från Innovia IoT och visar live-värden via SignalR.
+- **Offline-hantering:** tydligt meddelande när IoT-tjänsten inte svarar.
+- **Driftsättning:** hela applikationen körs på DigitalOcean App Platform med en managed PostgreSQL-databas.
+- **Refaktorering:** systemprompt och AI-verktyg är utbrutna till egna filer, plus städning av koden.
+
+## Tekniker
+
+| Del           | Teknik                                                     |
+|---------------|------------------------------------------------------------|
+| Frontend      | React 19, TypeScript, Vite, Tailwind CSS                   |
+| Backend       | ASP.NET Core (.NET 10), Web API med controllers            |
+| Databas       | PostgreSQL med Entity Framework Core (Npgsql)              |
+| Inloggning    | ASP.NET Core Identity (cookie-baserad), roller Admin/Medlem |
+| Realtid       | SignalR (bokningsnotiser + IoT-telemetri)                  |
+| AI            | OpenAI (`gpt-4o-mini`) med function calling                |
+| Driftsättning | DigitalOcean App Platform + Managed PostgreSQL             |
+| Lokalt        | Docker (PostgreSQL)                                        |
+
+## Projektstruktur
+
+```
+InnoviaHub.Api          Controllers, services, SignalR-hub, AI-assistent
+InnoviaHub.DataAccess   Entiteter, DbContext, migrationer, repositories
+InnoviaHub.Shared       DTO:er som delas mellan lagren
+InnoviaHub.Client       React-frontend
+```
+
+## Köra lokalt
+
+### Förutsättningar
 
 - .NET SDK 10
 - Node.js och npm
 - Docker Desktop
-- OpenAI API-nyckel (för AI-assistenten)
+- OpenAI API-nyckel
 
-## Starta projektet
+### 1. Miljövariabler och databas
 
-Kör kommandona från projektets rotmapp.
-
-### 1. Starta databasen
-
-Skapa en .env-fil i projektets rotmapp med följande innehåll:
-
-Ersätt `<container_name>`, `<database_name>`, `<username>` och `<password>` med dina egna värden.
+Kopiera `.env.example` till `.env` i **rotmappen** och fyll i dina värden:
 
 ```env
 CONTAINER_NAME=<container_name>
 DATABASE=<database_name>
 DB_USERNAME=<username>
 DB_PASSWORD=<password>
+
+VITE_API_URL=http://localhost:5193
+VITE_IOT_HUB_URL=http://localhost:5103/hub/telemetry
 ```
+
+Starta databasen (port `5433`):
 
 ```powershell
 docker compose up -d
 ```
 
-### 2. Konfigurera API:t
+### 2. Starta API:t
 
-API:t använder PostgreSQL på port `5433` och kräver en connection string. Sätt variablerna i samma terminalfönster som
-API:t ska startas i:
-
-Ersätt `<database_name>`, `<username>` och `<password>` med dina värden från .env-filen i connection stringen.
-`ADMIN_EMAIL` och `ADMIN_PASSWORD` är valfria och används för att skapa den första administratören.
-
-`OPENAI_API_KEY` krävs för AI-assistenten. Utan den startar inte API:t.
+Sätt variablerna i samma terminal som API:t startas i:
 
 ```powershell
 $env:SQL_ConnectionString = "Host=localhost;Port=5433;Database=<database_name>;Username=<username>;Password=<password>"
+$env:OPENAI_API_KEY = '<din-openai-nyckel>'
 $env:ADMIN_EMAIL = '<din-admin-email>'
 $env:ADMIN_PASSWORD = '<ditt-lösenord>'
-$env:OPENAI_API_KEY = '<din-openai-nyckel>'
 ```
 
-> **Krav på `ADMIN_PASSWORD`**
->
-> Lösenordet måste innehålla:
-> - minst 6 tecken
-> - en stor bokstav (A–Z)
-> - en liten bokstav (a–z)
-> - en siffra (0–9)
-> - ett specialtecken (t.ex. `!` eller `#`)
->
-> Exempel: `Exempel1234!`
->
-> **Tips:** använd enkla citattecken (`'...'`) runt lösenord i PowerShell,
-> så tolkas inte `$` som en variabel.
-
-Kör migrationerna och starta API:t:
+> `ADMIN_PASSWORD` måste ha minst 6 tecken, stor och liten bokstav, en siffra och ett specialtecken.
+> Använd enkla citattecken i PowerShell så att `$` inte tolkas som en variabel.
 
 ```powershell
-dotnet ef database update --project InnoviaHub.DataAccess --startup-project InnoviaHub.Api
 dotnet run --project InnoviaHub.Api --launch-profile http
 ```
 
-API:t körs på `http://localhost:5193`. OpenAPI/Scalar finns på `http://localhost:5193/scalar` i utvecklingsläge.
+Migrationerna körs automatiskt vid start. API:t körs på `http://localhost:5193` och Scalar finns på `/scalar`.
 
 ### 3. Starta klienten
 
-Skapa en `.env`-fil i `InnoviaHub.Client` med följande innehåll:
-
-```env
-VITE_API_URL=http://localhost:5193
-```
-
-Öppna ett nytt terminalfönster:
-
 ```powershell
-Set-Location InnoviaHub.Client
+cd InnoviaHub.Client
 npm install
 npm run dev
 ```
 
-Klienten körs normalt på `http://localhost:5173`.
+Klienten körs på `http://localhost:5173`.
 
-## Vanliga kommandon
+### 4. (Valfritt) IoT
 
-```powershell
-# Stoppa databasen
-docker compose down
+För live-sensordata startar du Innovia IoT lokalt. Se `https://github.com/phuusie/wu25-innovia-iot.git`.
+Utan IoT fungerar allt annat, och sensorfliken visar att enheterna är offline.
 
-# Bygg API:t
-dotnet build InnoviaHub.slnx
+## AI-assistenten i korthet
 
-# Bygg klienten
-npm run build --prefix InnoviaHub.Client
+1. Kunden skriver i chatten. Konversationen skickas till `POST /api/Assistant/chat`.
+2. Backend lägger till en systemprompt med datum, öppettider och regler.
+3. OpenAI gissar aldrig tider. Den anropar verktygen `get_availability` och `propose_booking`, som körs mot databasen.
+4. Förslaget visas med knapparna **Ja, boka** / **Annan tid**.
+5. **Ja, boka** anropar `POST /api/Assistant/confirm/{proposalId}`, som skapar bokningen med samma regler som en vanlig bokning.
 
-# Kör lint på klienten
-npm run lint --prefix InnoviaHub.Client
-```
-
-Om `dotnet ef` saknas, installera Entity Framework CLI
-
-```powershell
-dotnet tool install --global dotnet-ef
-```
+API-nyckeln finns bara i backend, AI:n kan bara *föreslå*, och varje användare får skicka max 10 meddelanden per minut.
 
 ## Testa API:t
 
-HTTP-anrop finns i `InnoviaHub.Api/Http`. De kan köras direkt från VS Code med REST Client-tillägget.
-Eller så kan ni använda er av Scalar/OpenAPI som finns på `http://localhost:5193/scalar` i utvecklingsläge.
+HTTP-filer finns i `InnoviaHub.Api/Http`. I utvecklingsläge finns Scalar på `http://localhost:5193/scalar`.
 
-## AI-bokningsassistent
+## IoT-integrationen i korthet
 
-En AI-assistent som hjälper kunden med att hitta lediga tider och föreslå bokningar utan att behöva gå in på
-bokningssidan.
+## Funktioner jag har vidareutvecklat
 
-### Så fungerar det
-
-1. Kunden skriver en fråga i chatten. Hela konversationen skickas till `POST /api/Assistant/chat`.
-2. Backend lägger till en systemprompt med dagens datum, öppettider och regler för hur assistenten ska bete sig.
-3. OpenAI gissar aldrig lediga tider själv. Den anropar två verktyg (*function calling*) som körs av backend:
-    - `get_availability` – hämtar lediga tider från databasen.
-    - `propose_booking` – kontrollerar en tid och skapar ett **förslag**. Ingen bokning görs här.
-4. Förslaget visas i chatten med knapparna **Ja, boka** och **Annan tid**.
-5. **Ja, boka** anropar `POST /api/Assistant/confirm/{proposalId}`, som skapar bokningen utan AI.
-
-Assistenten kan bara föreslå tider. Själva bokningen görs först när kunden klickar på knappen,
-och den går igenom samma kontroller som en vanlig bokning.
-
-### Var koden finns
-
-| Backend                              | Vad den gör                         |
-|--------------------------------------|-------------------------------------|
-| `Services/AssistantService.cs`       | Pratar med OpenAI och kör verktygen |
-| `Services/AvailabilityService.cs`    | Räknar ut lediga tider              |
-| `Services/BookingService.cs`         | Alla regler för bokningar           |
-| `Controllers/AssistantController.cs` | Endpoints för chatt och bekräftelse |
-
-| Frontend                           | Vad den gör              |
-|------------------------------------|--------------------------|
-| `components/Chat/ChatWidget.tsx`   | Chattbubblan och chatten |
-| `components/Chat/ProposalCard.tsx` | Förslaget med knapparna  |
-| `services/assistantService.ts`     | Anrop till API:t         |
-
-### Nya endpoints
-
-Alla kräver inloggning.
-
-| Metod  | Endpoint                                                         | Beskrivning                                              |
-|--------|------------------------------------------------------------------|----------------------------------------------------------|
-| `POST` | `/api/Assistant/chat`                                            | Skickar konversationen och får svar + eventuellt förslag |
-| `POST` | `/api/Assistant/confirm/{proposalId}`                            | Bekräftar ett förslag och skapar bokningen               |
-| `GET`  | `/api/Availability?date=YYYY-MM-DD&minCapacity=&resourceTypeId=` | Lediga tider per resurs en viss dag                      |
-
-### Säkerhet
-
-- API-nyckeln finns bara i backend. Klienten pratar aldrig direkt med OpenAI.
-- AI:n kan bara föreslå. Bokningen görs först när kunden klickar på knappen.
-- Max 10 meddelanden per minut och användare.
-
+- **Lediga tider och öppettider:** API som räknar ut lediga tider per resurs, och bokningsregler som följer konfigurerbara öppettider.
+- **AI-bokningsassistent:** chatt med OpenAI och function calling som söker lediga tider och föreslår bokningar som användaren bekräftar.
+- **Ny design av frontenden:** omgjord startsida, inloggning, bokningsflöde och adminpanel. Designen togs fram med hjälp av AI, som jag styrde och anpassade till projektet.
+- **IoT-integration:** sensorfliken visar riktiga enheter från Innovia IoT med live-värden via SignalR, och ett tydligt offline-läge när tjänsten inte svarar.
+- **Driftsättning:** DigitalOcean App Platform med Managed PostgreSQL.
